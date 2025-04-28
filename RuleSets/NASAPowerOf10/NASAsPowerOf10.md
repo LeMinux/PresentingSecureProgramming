@@ -190,4 +190,6 @@ There are also other flags like
 
 [Nasa's Power of 10](https://web.eecs.umich.edu/~imarkov/10rules.pdf)
 
+[JPL C Coding Standards](https://yurichev.com/mirrors/C/JPL_Coding_Standard_C.pdf)
+
 [Tiger Bettle]()
