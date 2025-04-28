@@ -16,8 +16,8 @@ I would still suggest to read NASA's reasoning though as it provides insight int
 ## Note For Other Languages
 
 Not every language can follow all 10 of these rules. Weakly typed and OOP languages make it impossible to avoid the HEAP, and some
-languages abstract away pointers. Despite this, most languages should be able to follow all but 3, 9, and 10. Import statements
-basically copy and paste the code into the file which is what the preprocessor does. Rules 9 and 10
+languages abstract away pointers. NASA has their reason for avoiding garbage collecting languages.
+Despite this, most languages should be able to follow all but 3, 9, and 10. Rules 9 and 10
 are a little iffy based on the language. Weakly typed languages can't follow rule 10 as they don't know the data type. Imagine launching
 a rover in Python and it turns out you forgot to test a branch containing a type error. Rule 9 can also be harder to follow since
 some languages abstract pointers and dereferencing is implicit.
@@ -53,17 +53,24 @@ if not you leave yourself in a bad state.
 
 Goto is a little weird. I've seen some valid uses for goto like to jump to handling errors, but I feel its usage should be minimal if at all.
 
-### 2. Terminating loops should be given a fixed upper bound
+### 2. Give all terminating hoops a fixed upper bound
 
-Notice this says "terminating" loops. These are loops that are not expected to runaway or run forever.
-They say for non-terminating loops they should be verified they won't stop.
+Notice this says "terminating" loops. These are loops that are not expected to run forever.
+Non-terminating loops should be verified they won't stop like waiting for network requests,
+and there should only be one non-terminating loop per thread/task.
 
-This rule applies to loops that have a variable number of iterations. Examples would be traversing a linked list
-or traversing a string. There isn't an exact number on what the max should be, but it should be related to your
-assumptions on what would be an unreasonable amount of iterations. For example if you're looping through some menu
-titles and your largest string is 50 characters (including the nul byte) you would want to have the max iteration count at 51.
+This rule mostly applies to loops that have a variable number of iterations. Examples would be traversing a linked list
+or traversing a string. The max should be related to your assumptions on what would be an unreasonable amount of iterations.
+If you are dealing with file paths what is the maximum length a file path can be?
 
+However, in general programming you might have some while(true) waiting for some condition to exit.
+In this case you would want to test that only that condition can terminate the loop.
+You may have it so only a signal like SIGINT (CTRL + C) can be the only option
+to terminate, but how secure this would be depends on your environment.
 
+Async functions I think should also fall under here. I didn't see anything about
+asynchronous functions in NASA's documentation, but it is a common practice to set
+a timeout for asynchronous things. This way your program won't hang there waiting, and you can return an error.
 
 ### 3. Do not use dynamic memory after initialization
 
