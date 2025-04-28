@@ -66,7 +66,7 @@ If you are dealing with file paths what is the maximum length a file path can be
 However, in general programming you might have some while(true) waiting for some condition to exit.
 In this case you would want to test that only that condition can terminate the loop.
 You may have it so only a signal like SIGINT (CTRL + C) can be the only option
-to terminate, but how secure this would be depends on your environment.
+to terminate, but how secure this would be depends on your environment and implimentation.
 
 Async functions I think should also fall under here. I didn't see anything about
 asynchronous functions in NASA's documentation, but it is a common practice to set
@@ -75,14 +75,20 @@ a timeout for asynchronous things. This way your program won't hang there waitin
 ### 3. Do not use dynamic memory after initialization
 
 This rule can be especially hard to follow, but it has its reason.
+It's a common rule for anything saftey critical.
 The rule aims to completely avoid all the issues the come with using the HEAP.
+
 Things like
+```
 use after free
 forgetting to free memory
 using too much memory
 buffer overflows in the HEAP
+unreliability of garbage collectors
+undermining ASLR protection
 etc...
-    
+```
+
 I would also like to add that alloca() should never be used. Each compiler implements it differently and it has no error status return.
 Alloca() is described here https://www.man7.org/linux/man-pages/man3/alloca.3.html
 
@@ -92,10 +98,11 @@ gaps which is what the stack does.
 
 So how exactly would someone take dynamic input? There are a couple of ways.
 1. Set some maximum bound
-2. Memory pools
+2. Object pools
 3. Ring buffers
+4. Arenas
 
-Now of course NASA doesn't accept input in the traditonal sense. I would say for your tradional OS apps to avoid using dynamic memory when possible.
+Now of course NASA doesn't accept input in the traditonal sense. I would say for your tradional apps to avoid using dynamic memory when possible.
 Try to not fall into the trap where you must take exact sizes of the user's input. You will want some bound or else your user input will take the
 entire memory of the OS.
 
