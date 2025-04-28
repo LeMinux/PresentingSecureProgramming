@@ -13,6 +13,15 @@ Below is my interpretation and my personal take for NASA's rules. I understand m
 are not coding rovers or satellites, so not every rule may apply especially considering your language.
 I would still suggest to read NASA's reasoning though as it provides insight into their expectations.
 
+## Note For Other Languages
+
+Not every language can follow all 10 of these rules. Weakly typed and OOP languages make it impossible to avoid the HEAP, and some
+languages abstract away pointers. Despite this, most languages should be able to follow but 3, 9, and 10. Import statements
+basically copy and paste the code into the file which is what the preprocessor does. Rules 9 and 10
+are a little iffy based on the language. Weakly typed languages can't follow rule 10 as they don't know the data type. Imagine launching
+a rover in Python and it turns out you forgot to test a branch containing a type error. Rule 9 can also be harder to follow since
+some languages abstract pointers and dereferancing is implicit.
+
 ### 1. Have a clear simple control flow
 
 I like to think of this rule as having a clear path of branching.
@@ -160,14 +169,6 @@ Yes you could use array subscript notation, but this is just an example.
 This depends on the compiler and is more suited for strongly typed languages.
 for gcc there is -Wextra -Werror -Wpedantic
 There is also a built in ASAN in gcc by using -fsanitize=address
-
-## Note for other Languages
-
-Not every language can follow all 10 of these rules. Weakly typed and OOP languages make it impossible to avoid the HEAP, and some
-languages abstract away pointers. Despite this most languages should be able to follow all the rules except for 3. Import statements
-basically copy and paste the code into the file which is what the preprocessor does. Rules 9 and 10
-are a little iffy based on the language. Weakly typed languages can't have a pedantic mode as they don't know the data type, and with some
-languages abstracting pointers rule 9 can be harder to follow.
 
 ## Sources
 
