@@ -145,7 +145,9 @@ says in cases where the return doesn't matter to case as void
 so this -> (void)printf("%s", "Hi")
 
 You should also check the parameters passed into the function to ensure they are usable.
-Weakly typed languages may have a more difficult time with this, but I think the types 
+This promotes the principles of creating "total functions" in where it can handle any value.
+Basically it handles every value by only accepting what it can use and denying the rest.
+Weakly typed languages may have a more difficult time with this, but I think the types
 should be validated. That might just be the strongly type bias in me though. To be fair though
 you're making an assumption that this variable is a certain type, and you should assert your assumptions.
 
