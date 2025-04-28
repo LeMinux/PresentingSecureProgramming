@@ -6,7 +6,7 @@ NASA's Power of 10 is very powerful set of rules.
 It is well known for it's strict rules tailored to creating saftey critical code.
 Howevever, the emphasis is on **saftey critical C code**. Most programmers are not
 developing saftey critical code, and most languages can't implement
-every rule. Additionally, these rules do not go over input validation or sanitization.
+every rule. Additionally, these rules do not explicity go over input sanitization or overflow checks.
 Despite this, I feel it is at least important to know what rules you can implement given your circumstance.
 
 Below is my interpretation and my personal take for NASA's rules. I understand most programmers
@@ -16,11 +16,11 @@ I would still suggest to read NASA's reasoning though as it provides insight int
 ## Note For Other Languages
 
 Not every language can follow all 10 of these rules. Weakly typed and OOP languages make it impossible to avoid the HEAP, and some
-languages abstract away pointers. Despite this, most languages should be able to follow but 3, 9, and 10. Import statements
+languages abstract away pointers. Despite this, most languages should be able to follow all but 3, 9, and 10. Import statements
 basically copy and paste the code into the file which is what the preprocessor does. Rules 9 and 10
 are a little iffy based on the language. Weakly typed languages can't follow rule 10 as they don't know the data type. Imagine launching
 a rover in Python and it turns out you forgot to test a branch containing a type error. Rule 9 can also be harder to follow since
-some languages abstract pointers and dereferancing is implicit.
+some languages abstract pointers and dereferencing is implicit.
 
 ### 1. Have a clear simple control flow
 
@@ -60,8 +60,10 @@ They say for non-terminating loops they should be verified they won't stop.
 
 This rule applies to loops that have a variable number of iterations. Examples would be traversing a linked list
 or traversing a string. There isn't an exact number on what the max should be, but it should be related to your
-assumptions on what would be an unreasonable amount of iterations is. For example if you're looping through some menu
-titles and your largest string is 50 characters (including the nul byte) you would want to have the max iteration count at 51. 
+assumptions on what would be an unreasonable amount of iterations. For example if you're looping through some menu
+titles and your largest string is 50 characters (including the nul byte) you would want to have the max iteration count at 51.
+
+
 
 ### 3. Do not use dynamic memory after initialization
 
@@ -167,8 +169,22 @@ Yes you could use array subscript notation, but this is just an example.
 ### 10. Compile with all pedantic flags and all warnings
 
 This depends on the compiler and is more suited for strongly typed languages.
-for gcc there is -Wextra -Werror -Wpedantic
-There is also a built in ASAN in gcc by using -fsanitize=address
+for gcc there is `-Wextra -Werror -Wpedantic.`
+There is also a built in ASAN in gcc by using `-fsanitize=address`
+
+NASA uses `gcc –Wall –pedantic –std=iso9899:1999`
+
+There are also other flags like
+```
+-Wtraditional
+-Wshadow
+-Wpointer-arith
+-Wcast-qual
+-Wcast-align
+-Wstrict-prototypes
+-Wmissing-prototypes
+-Wconversion
+```
 
 ## Sources
 
