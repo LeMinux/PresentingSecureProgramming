@@ -110,16 +110,33 @@ entire memory of the OS.
 
 RIP all the Java and C++ users :P
 This rule basically says to keep your functions smaller for easier auditing. Tiger Bettle also uses this rule and they have their limit at 80.
-I personally like to have the limit at 80 because if the function goes past 80 lines there may need to be reconsideration on branching. Now
-this rule applies to the actual code and not comments, but if you need to have a paragraph comment to explain something probably rethink it.
-Your code should also be clear just on its own, so I would like to add to this rule to keep variable names clear. Tiger Bettle
-has their own style on function names.
+I personally like to have the limit at 80 because if the function goes past 80 lines there may need to be reconsideration on logic.
+I believe this rule also applies to comments. The JPL Coding Standard says 60 lines of text while the Power of 10 documents says 60 lines of code,
+but the JPL standard is more recent. What I do know is that your code should be clear just on its own.
+If you need to have a paragraph comment to explain something probably rethink it.
 
-It also suggests to have one line per statement. Honest to god if you have an if statment spread over 3 lines please
-reconsider your logic.
+It also suggests to have one line per statement. This includes variable statements.
+
+```
+int obtain_value = getValue(), obtain_value2 = getAnotherValue();
+char* first = some_string, second = some_string + 1;
+```
+
+would be
+
+```
+int obtain_value = getValue();
+int obtain_value2 = getAnotherValue();
+char* first = some_string;
+char* second = some_string + 1;
+```
+
+Honest to god if the conditional statement in an if statment is spread over 5 lines please
+reconsider your logic. Same for if a function accepts too many parameters. NASA places a maximum of 6.
 
 If you have troubles with trying to condense functions, TigerBettle suggests to keep your branching,
 but the contents of the branch can be added into its own method. Also look for any repitition.
+The benefit of adding them to methods also allows to you verify their arguments in a single place.
 
 ### 5. Assertion density should average 2
 
@@ -136,6 +153,7 @@ In C this is the best way to accomplish data hiding.
 It also makes debugging easier, and reduces the surface area of things to corrupt.
 This rule works well in combination with rule 3 since once the function is done the stack
 is cleared of its work, and doesn't leave crumbs.
+I would like to add to this rule to keep variable names clear for easier auditing.
 
 ### 7. Check all return values of non-void functions and validate passed in parameters
 
