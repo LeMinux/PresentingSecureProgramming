@@ -89,12 +89,13 @@ undermining ASLR protection
 etc...
 ```
 
-I would also like to add that alloca() should never be used. Each compiler implements it differently and it has no error status return.
+I would also like to add that alloca() should never be used.
+Each compiler implements it differently and it has no error status return.
 Alloca() is described here https://www.man7.org/linux/man-pages/man3/alloca.3.html
 
-This rule is especially tailored to embedded systems that NASA uses. You really wouldn't want to deal with fragmentation and
-best fit algortithms in a system that already doesn't have a lot of memory. The most efficent use of memory is leaving no
-gaps which is what the stack does.
+This rule is especially tailored to embedded systems that NASA uses.
+You really wouldn't want to deal with fragmentation and best fit algortithms in a system that already doesn't have a lot of memory.
+The most efficent use of memory is leaving no gaps which is what the stack does.
 
 So how exactly would someone take dynamic input? There are a couple of ways.
 1. Set some maximum bound
@@ -102,27 +103,34 @@ So how exactly would someone take dynamic input? There are a couple of ways.
 3. Ring buffers
 4. Arenas
 
-Now of course NASA doesn't accept input in the traditonal sense. I would say for your tradional apps to avoid using dynamic memory when possible.
-Try to not fall into the trap where you must take exact sizes of the user's input. You will want some bound or else your user input will take the
+Now of course NASA doesn't accept input in the traditonal sense.
+I would say for your tradional apps to avoid using dynamic memory when possible.
+Try to not fall into the trap where you must take exact sizes of the user's input.
+You will want some bound or else your user input will take the
 entire memory of the OS.
 
 ### 4. Function Length should be printable on a page with one statement per line
 
-RIP all the Java and C++ users :P
-This rule basically says to keep your functions smaller for easier auditing. Tiger Bettle also uses this rule and they have their limit at 80.
-I personally like to have the limit at 80 because if the function goes past 80 lines there may need to be reconsideration on logic.
-I believe this rule also applies to comments. The JPL Coding Standard says 60 lines of text while the Power of 10 documents says 60 lines of code,
-but the JPL standard is more recent. What I do know is that your code should be clear just on its own.
-If you need to have a paragraph comment to explain something probably rethink it.
+RIP all the Java and C++ users :P.
+This rule basically says to keep your functions smaller for easier auditing.
+I believe this rule does not apply to comments.
+The JPL Coding Standard and NASA power of 10 both say 60 lines of code.
+Tiger Bettle also uses this rule and they have their limit at 70 lines.
+I personally think 80 is the absolute maximum because if the function goes past 80 lines there needs to be reconsideration on logic.
 
-It also suggests to have one line per statement. This includes variable statements.
+NASA doesn't say anything about column limits though, but excessively long lines can hurt readability.
+80 character column limit seems to be more prefered, even I try to stick by it, but It's not the end of the world if it goes past 80 characters.
+100 characters is the maximum I would try, but I don't think anything should go to 120 characters.
+
+Combined in this rule is having one line per statement.
+This includes variable statements.
 
 ```
 int obtain_value = getValue(), obtain_value2 = getAnotherValue();
 char* first = some_string, second = some_string + 1;
 ```
 
-would be
+should be
 
 ```
 int obtain_value = getValue();
@@ -131,8 +139,18 @@ char* first = some_string;
 char* second = some_string + 1;
 ```
 
+This is for more clarity.
+It avoids statements like `int* x,y,z` where only x is actually a pointer and the rest are ints.
+You would need to do `int* x, *y, *z` instead to make them all pointers.
+
+NASA makes a notable exception for for loops since they are technically 3 statements together.
+For loops are fine to keep in a single line.
+This then raises the question of what about boolean expressions in ifs and whiles?
+I think the preferance is to maintain one line if possible since it is technically one large
+boolean statement. Although, sometimes the expressions can get a little long, so splitting into multiple lines can aid readability.
 Honest to god if the conditional statement in an if statment is spread over 5 lines please
 reconsider your logic. Same for if a function accepts too many parameters. NASA places a maximum of 6.
+I believe the max is 6 since the 7th and beyond are placed on the stack instead of a register.
 
 If you have troubles with trying to condense functions, TigerBettle suggests to keep your branching,
 but the contents of the branch can be added into its own method. Also look for any repitition.
@@ -227,3 +245,5 @@ There are also other flags like
 [JPL C Coding Standards](https://yurichev.com/mirrors/C/JPL_Coding_Standard_C.pdf)
 
 [Tiger Bettle]()
+
+[MISRA C 2004](https://caxapa.ru/thumbs/468328/misra-c-2004.pdf)
