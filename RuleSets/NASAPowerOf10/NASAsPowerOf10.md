@@ -200,16 +200,15 @@ I would like to add to this rule to keep variable names clear for easier auditin
 ### 7. Check all return values of non-void functions and validate passed in parameters
 
 This is the most forgotten rule and is very helpful to catch bugs.
-In the most extreme cases you would be checking the results of printf, but NASA
-says in cases where the return doesn't matter to case as void
-so this -> (void)printf("%s", "Hi")
+In the most extreme cases you would be checking the results of printf, but NASA says in cases where the return doesn't matter to cast as void.
+so this -> `(void)printf("%s", "Hi")`
 
 You should also check the parameters passed into the function to ensure they are usable.
 This promotes the principles of creating "total functions" in where it can handle any value.
 Basically it handles every value by only accepting what it can use and denying the rest.
-Weakly typed languages may have a more difficult time with this, but I think the types
-should be validated. That might just be the strongly type bias in me though. To be fair though
-you're making an assumption that this variable is a certain type, and you should assert your assumptions.
+Weakly typed languages may have a more difficult time with this, but I think the types should be validated.
+That might just be the strongly type bias in me though.
+However, types are an assumption in weakly typed languages, and you should assert your assumptions.
 
 ### 8. The preprocessor should be left for simple tasks like includes and simple macros
 
