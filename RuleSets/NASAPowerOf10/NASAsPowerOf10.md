@@ -191,8 +191,10 @@ Programs that run infinitely probably don't want to exit the program on assertio
 
 In C this is the best way to accomplish data hiding.
 It also makes debugging easier by reducing the surface area of things to modify.
-This rule works well in combination with rule 3 since once the function is done the stack
-is cleared of its work, and doesn't leave crumbs.
+This rule works well in combination with rule 3 since once the function is done the stack is cleared of its work.
+Within this rule is prefereance for "pure" functions.
+These are functions that don't modify global state, don't indirectly modify caller data, and don't store a local state.
+This can be further aided with the use of const and enums. Anything that shouldn't be modified should have const.
 I would like to add to this rule to keep variable names clear for easier auditing.
 
 ### 7. Check all return values of non-void functions and validate passed in parameters
