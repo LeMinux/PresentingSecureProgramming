@@ -158,17 +158,38 @@ The benefit of adding them to methods also allows to you verify their arguments 
 
 ### 5. Assertion density should average 2
 
-If for what ever reason you hate all the other rules this rule you can't hate. Assertions act on your assumptions.
-Basically think of you putting yourself into the code to check one assumption you know must be true.
+If for what ever reason you hate all the other rules this rule you can't hate.
+Assertions act on your assumptions, and they don't have side effects.
+The point is to act on behavior that **should** never happen in real execution.
+The question people have is why have a check for something that shouldn't happen?
+Well programmers make mistakes which often time only show up later, or bugs are hidden due to how logic is laid out.
+Unit testing can help find errors, but the problem with unit tests is that you would need to write the test.
+Especially when it comes to the nitty gritty testing, you may not test that behavior.
+This isn't to say that unit tests are not useful; you should use both assertions and unit testing.
+Your unit tests test expected and unexpected behavior and your assertions will catch what should never happen.
 
-Proper usage of assertions can be confusing though.
+So where do you use assertions?
+- verify pre-conditions of functions
+- verify post-conditions of functions
+- verify parameter values
+- verify return values
+- verify loop invariants
+If you notice these are checking if the code is abiding by its contract
 
-This rule goes hand in hand with rule 7 in checking your parameters.
+Where do you **NOT** use assertions?
+- Validating user input
+- Public facing methods
+- Handling expected errors (like file open failure)
+
+In these cases you should VALIDATE instead.
+This is because assertions are removable for production code for performance reasons.
+If you want to modify the behavior of the default assertions or don't want them to be removable you can create your own.
+Programs that run infinitely probably don't want to exit the program on assertion failure.
 
 ### 6. Variables should be declared in their lowest scope
 
 In C this is the best way to accomplish data hiding.
-It also makes debugging easier, and reduces the surface area of things to corrupt.
+It also makes debugging easier by reducing the surface area of things to modify.
 This rule works well in combination with rule 3 since once the function is done the stack
 is cleared of its work, and doesn't leave crumbs.
 I would like to add to this rule to keep variable names clear for easier auditing.
