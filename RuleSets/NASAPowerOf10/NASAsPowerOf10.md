@@ -174,6 +174,7 @@ So where do you use assertions?
 - verify parameter values
 - verify return values
 - verify loop invariants
+
 If you notice these are checking if the code is abiding by its contract
 
 Where do you **NOT** use assertions?
@@ -181,10 +182,10 @@ Where do you **NOT** use assertions?
 - Public facing methods
 - Handling expected errors (like file open failure)
 
-In these cases you should VALIDATE instead.
+In these cases you should **VALIDATE** instead.
 This is because assertions are removable for production code for performance reasons.
 If you want to modify the behavior of the default assertions or don't want them to be removable you can create your own.
-Programs that run infinitely probably don't want to exit the program on assertion failure.
+Programs that run infinitely probably don't want to exit the program on assertion failure (especially if your machine is out in space).
 
 ### 6. Variables should be declared in their lowest scope
 
