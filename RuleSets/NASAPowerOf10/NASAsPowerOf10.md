@@ -156,17 +156,17 @@ If you have troubles with trying to condense functions, TigerBettle suggests to 
 but the contents of the branch can be added into its own method. Also look for any repitition.
 The benefit of adding them to methods also allows to you verify their arguments in a single place.
 
-### 5. Assertion density should average 2
+### 5. Assertion density should average 2 with assertions having no side effects and always boolean
 
 If for what ever reason you hate all the other rules this rule you can't hate.
-Assertions act on your assumptions, and they don't have side effects.
+Assertions act on your assumptions.
 The point is to act on behavior that **should** never happen in real execution.
 The question people have is why have a check for something that shouldn't happen?
 Well programmers make mistakes which often time only show up later, or bugs are hidden due to how logic is laid out.
 Unit testing can help find errors, but the problem with unit tests is that you would need to write the test.
 Especially when it comes to the nitty gritty testing, you may not test that behavior.
 This isn't to say that unit tests are not useful; you should use both assertions and unit testing.
-Your unit tests test expected and unexpected behavior and your assertions will catch what should never happen.
+Your unit tests test expected and unexpected behavior, and your assertions will catch what should never happen.
 
 So where do you use assertions?
 - verify pre-conditions of functions
@@ -175,7 +175,7 @@ So where do you use assertions?
 - verify return values
 - verify loop invariants
 
-If you notice these are checking if the code is abiding by its contract
+If you notice, these are checking if actions are abiding by its contract
 
 Where do you **NOT** use assertions?
 - Validating user input
@@ -184,8 +184,30 @@ Where do you **NOT** use assertions?
 
 In these cases you should **VALIDATE** instead.
 This is because assertions are removable for production code for performance reasons.
-If you want to modify the behavior of the default assertions or don't want them to be removable you can create your own.
+If you want to modify the behavior of the default assertions, or don't want them to be removable you can create your own.
 Programs that run infinitely probably don't want to exit the program on assertion failure (especially if your machine is out in space).
+
+NASA defines an assertion like this
+
+```
+#define c_assert(e) ((e) ? (true) : \
+tst_debugging("%s,%d: assertion '%s' failed\n", \
+__FILE__, __LINE__, #e), false)
+```
+
+or on one line
+
+`#define c_assert(e) ((e) ? (true) : tst_debugging("%s,%d: assertion '%s' failed\n", __FILE__, __LINE__, #e), false)`
+
+They give an example usage like this
+
+```
+if (!c_assert(p >= 0) == true) {
+    return ERROR;
+}
+```
+
+Defining an assertion like this allows NASA to log the error with a specified routine, and allows for error return.
 
 ### 6. Variables should be declared in their lowest scope
 
