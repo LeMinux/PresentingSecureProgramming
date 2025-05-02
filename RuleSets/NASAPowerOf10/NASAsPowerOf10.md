@@ -4,23 +4,27 @@
 
 NASA's Power of 10 is very powerful set of rules.
 It is well known for it's strict rules tailored to creating saftey critical code.
-Howevever, the emphasis is on **saftey critical C code**. Most programmers are not
-developing saftey critical code, and most languages can't implement
-every rule. Additionally, these rules do not explicity go over input sanitization or overflow checks.
+These systems must be developed correctly, or they can result in death or injury of people.
+Howevever, the emphasis is on **saftey critical C code**.
+Most programmers are not developing saftey critical code, and most languages can't implement every rule.
+Additionally, these rules do not explicity go over input sanitization or overflow checks.
 Despite this, I feel it is at least important to know what rules you can implement given your circumstance.
 
-Below is my interpretation and my personal take for NASA's rules. I understand most programmers
-are not coding rovers or satellites, so not every rule may apply especially considering your language.
-I would still suggest to read NASA's reasoning though as it provides insight into their expectations.
+Below is my interpretation and my personal take for NASA's rules.
+I understand most programmers are not coding rovers or satellites, so not every rule may apply especially considering your language.
+I would still suggest to read NASA's documentation as it provides insight into their expectations and reasonings.
 
 ## Note For Other Languages
 
-Not every language can follow all 10 of these rules. Weakly typed and OOP languages make it impossible to avoid the HEAP, and some
-languages abstract away pointers. NASA has their reason for avoiding garbage collecting languages.
-Despite this, most languages should be able to follow all but 3, 9, and 10. Rules 9 and 10
-are a little iffy based on the language. Weakly typed languages can't follow rule 10 as they don't know the data type. Imagine launching
-a rover in Python and it turns out you forgot to test a branch containing a type error. Rule 9 can also be harder to follow since
-some languages abstract pointers and dereferencing is implicit.
+Not every language can follow all 10 of these rules.
+Weakly typed and OOP languages make it impossible to avoid the HEAP, and some languages abstract away pointers.
+NASA has their reason for avoiding garbage collecting languages.
+They can be unpredictable and take up extra over head.
+Despite this, most languages should be able to follow all but 3, 9, and 10.
+Rules 9 and 10 are a little iffy based on the language.
+Weakly typed languages can't follow rule 10 as they don't know the data type.
+Imagine launching a rover in Python and it turns out you forgot to test a method containing a type error.
+Rule 9 can also be harder to follow since some languages abstract pointers and dereferencing is implicit.
 
 ### 1. Have a clear simple control flow
 
@@ -53,7 +57,7 @@ if not you leave yourself in a bad state.
 
 Goto is a little weird. I've seen some valid uses for goto like to jump to handling errors, but I feel its usage should be minimal if at all.
 
-### 2. Give all terminating hoops a fixed upper bound
+### 2. Give all terminating loops a fixed upper bound
 
 Notice this says "terminating" loops. These are loops that are not expected to run forever.
 Non-terminating loops should be verified they won't stop like waiting for network requests,
@@ -207,16 +211,17 @@ if (!c_assert(p >= 0) == true) {
 }
 ```
 
-Defining an assertion like this allows NASA to log the error with a specified routine, and allows for error return.
+Defining an assertion like this allows NASA to log the error with a specified routine and allows for error return.
 
 ### 6. Variables should be declared in their lowest scope
 
 In C this is the best way to accomplish data hiding.
 It also makes debugging easier by reducing the surface area of things to modify.
 This rule works well in combination with rule 3 since once the function is done the stack is cleared of its work.
-Within this rule is prefereance for "pure" functions.
+Within this rule is a prefereance for "pure" functions.
 These are functions that don't modify global state, don't indirectly modify caller data, and don't store a local state.
-This can be further aided with the use of const and enums. Anything that shouldn't be modified should have const.
+This can be further aided with the use of const and enums.
+Anything that shouldn't be modified should have const.
 I would like to add to this rule to keep variable names clear for easier auditing.
 
 ### 7. Check all return values of non-void functions and validate passed in parameters
@@ -225,12 +230,11 @@ This is the most forgotten rule and is very helpful to catch bugs.
 In the most extreme cases you would be checking the results of printf, but NASA says in cases where the return doesn't matter to cast as void.
 so this -> `(void)printf("%s", "Hi")`
 
-You should also check the parameters passed into the function to ensure they are usable.
+You should also check the parameters passed into the function to ensure they are usable especially for public functions.
 This promotes the principles of creating "total functions" in where it can handle any value.
 Basically it handles every value by only accepting what it can use and denying the rest.
 Weakly typed languages may have a more difficult time with this, but I think the types should be validated.
-That might just be the strongly type bias in me though.
-However, types are an assumption in weakly typed languages, and you should assert your assumptions.
+Types are an assumption in weakly typed languages, and you should assert your assumptions.
 
 ### 8. The preprocessor should be left for simple tasks like includes and simple macros
 
