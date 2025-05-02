@@ -239,13 +239,35 @@ I would like to add to this rule to keep variable names clear for easier auditin
 
 This is the most forgotten rule and is very helpful to catch bugs.
 In the most extreme cases you would be checking the results of printf, but NASA says in cases where the return doesn't matter to cast as void.
-so this -> `(void)printf("%s", "Hi")`
+so this -> `(void)printf("%s", "Hi")`.
+This way it is explicity saying "I am ignoring this", but also allows for questioning if it should be ignored.
+If you not choosing to ignore the error status, you should check it.
+This will help with troubleshooting in some cases as you won't continue with erronous behavior.
+According to MIRSA C 2004 rules though, checking parameters is considered a more robust means of error prevention.
 
-You should also check the parameters passed into the function to ensure they are usable especially for public functions.
-This promotes the principles of creating "total functions" in where it can handle any value.
-Basically it handles every value by only accepting what it can use and denying the rest.
-Weakly typed languages may have a more difficult time with this, but I think the types should be validated.
-Types are an assumption in weakly typed languages, and you should assert your assumptions.
+Validating parameters is probably the most important rule to have in any security focused rule.
+Public functions are well. . . public, so they could accept any kind of input.
+Therefore, it is important to make sure the public function can actually use the parameters it was given.
+Private functions should also validate their parameters, but here you can get away with using assert statements.
+Essentially this is just validation.
+This promotes the principles of creating "total functions" in where functions can handle any input.
+Weakly typed languages may have a more difficult time with this, but I think the type should be validated/asserted.
+Types are an assumption in weakly typed languages, and you should check your assumptions.
+
+However, you don't always create the functions.
+Sometimes you are using a provided function that may not do validation.
+In these cases it's applicable to check the parameters before calling the function.
+Conceptually I feel it is better to include the validation in your functions since it's more intuitive.
+Functions can be thought of as interfaces.
+You plug in your values and expect some value.
+Depending on what value you get is what you'll do.
+Having to remember to check the parameters before calling can often be forgotten, and it isn't expected.
+
+MISRA C 2004 mentions some ways of conducting validation
+- Check the values before calling the function.
+- Design checks into the function.
+- Produce wrapped versions of functions, that perform the checks then call the original function.
+- Demonstrate statically that the input parameters can never take invalid values.
 
 ### 8. The preprocessor should be left for simple tasks like includes and simple macros
 
@@ -256,7 +278,7 @@ Remember the preprocessor is basically just copy and paste, so debuggers will se
 This rule also advises against variatic arguments (like with printf), token pasting, and recursive macros.
 I gotta be honest recursive macros just sounds evil.
 
-NASA also says to avoid conditional compilation if possible since it makes exponentially more test cases. 
+NASA also says to avoid conditional compilation if possible since it makes exponentially more test cases.
 
 ### 9. Pointers should only use one level of dereferencing
 
@@ -304,6 +326,6 @@ There are also other flags like
 
 [JPL C Coding Standards](https://yurichev.com/mirrors/C/JPL_Coding_Standard_C.pdf)
 
-[Tiger Bettle]()
+[Tiger Bettle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md)
 
 [MISRA C 2004](https://caxapa.ru/thumbs/468328/misra-c-2004.pdf)
