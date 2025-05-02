@@ -76,42 +76,52 @@ Async functions I think should also fall under here. I didn't see anything about
 asynchronous functions in NASA's documentation, but it is a common practice to set
 a timeout for asynchronous things. This way your program won't hang there waiting, and you can return an error.
 
-### 3. Do not use dynamic memory after initialization
+### 3. Do not use dynamic memory after task initialization
+
+I believe what they mean by "task initialization" are things such as creation of threads.
+When creating a thread you can give it a fixed segment of memory for the thread's stack to use.
 
 This rule can be especially hard to follow, but it has its reason.
-It's a common rule for anything saftey critical.
-The rule aims to completely avoid all the issues the come with using the HEAP.
-
-Things like
-```
-use after free
-forgetting to free memory
-using too much memory
-buffer overflows in the HEAP
-unreliability of garbage collectors
-undermining ASLR protection
-etc...
-```
-
-I would also like to add that alloca() should never be used.
-Each compiler implements it differently and it has no error status return.
-Alloca() is described here https://www.man7.org/linux/man-pages/man3/alloca.3.html
-
-This rule is especially tailored to embedded systems that NASA uses.
+It's a common rule for anything saftey critical, and is a general rule to avoid the HEAP with embedded systems.
 You really wouldn't want to deal with fragmentation and best fit algortithms in a system that already doesn't have a lot of memory.
 The most efficent use of memory is leaving no gaps which is what the stack does.
 
-So how exactly would someone take dynamic input? There are a couple of ways.
+The rule aims to completely avoid all the issues the come with using the HEAP like.
+
+```
+use after free
+memory leaks
+dangling pointers
+exhausting HEAP memory
+pre-existing data in allocated bounds
+buffer overflows in the HEAP
+undeterministic behavior of garbage collectors
+```
+
+This means avoiding functions like
+- malloc()
+- calloc()
+- realloc()
+- free()
+- alloca() (https://www.man7.org/linux/man-pages/man3/alloca.3.html)
+- sbrk()
+
+also functions that internally use dynamic memory like.
+- the printf family
+- strdup()
+- fopen()
+
+So how exactly would someone take dynamic input?
+There are a couple of ways.
 1. Set some maximum bound
 2. Object pools
 3. Ring buffers
 4. Arenas
 
-Now of course NASA doesn't accept input in the traditonal sense.
-I would say for your tradional apps to avoid using dynamic memory when possible.
+Now of course NASA's environment is different than most people.
+I would say for your gerneral apps to avoid using explicit dynamic memory when possible, so using printf or fopen is fine.
 Try to not fall into the trap where you must take exact sizes of the user's input.
-You will want some bound or else your user input will take the
-entire memory of the OS.
+You will want some bound or else some crafty user will take the entire memory of the OS.
 
 ### 4. Function Length should be printable on a page with one statement per line
 
@@ -187,7 +197,7 @@ Where do you **NOT** use assertions?
 - Handling expected errors (like file open failure)
 
 In these cases you should **VALIDATE** instead.
-This is because assertions are removable for production code for performance reasons.
+This is because assertions are removable for performance reasons.
 If you want to modify the behavior of the default assertions, or don't want them to be removable you can create your own.
 Programs that run infinitely probably don't want to exit the program on assertion failure (especially if your machine is out in space).
 
@@ -217,6 +227,7 @@ Defining an assertion like this allows NASA to log the error with a specified ro
 
 In C this is the best way to accomplish data hiding.
 It also makes debugging easier by reducing the surface area of things to modify.
+This rule discourages the use of using the same variable for different purposes too.
 This rule works well in combination with rule 3 since once the function is done the stack is cleared of its work.
 Within this rule is a prefereance for "pure" functions.
 These are functions that don't modify global state, don't indirectly modify caller data, and don't store a local state.
