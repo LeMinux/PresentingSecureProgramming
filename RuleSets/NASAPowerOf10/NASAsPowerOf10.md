@@ -21,6 +21,7 @@ Weakly typed and OOP languages make it impossible to avoid the HEAP, and some la
 NASA has their reason for avoiding garbage collecting languages.
 They can be unpredictable and take up extra over head.
 Despite this, most languages should be able to follow all but 3, 9, and 10.
+Rule 8 isn't relevant to most languages since the most you can do is import files.
 Rules 9 and 10 are a little iffy based on the language.
 Weakly typed languages can't follow rule 10 as they don't know the data type.
 Imagine launching a rover in Python and it turns out you forgot to test a method containing a type error.
@@ -263,7 +264,7 @@ You plug in your values and expect some value.
 Depending on what value you get is what you'll do.
 Having to remember to check the parameters before calling can often be forgotten, and it isn't expected.
 
-MISRA C 2004 mentions some ways of conducting validation
+MISRA C 2004 rule 20.3 mentions some ways of conducting validation
 - Check the values before calling the function.
 - Design checks into the function.
 - Produce wrapped versions of functions, that perform the checks then call the original function.
@@ -272,13 +273,85 @@ MISRA C 2004 mentions some ways of conducting validation
 ### 8. The preprocessor should be left for simple tasks like includes and simple macros
 
 The preprocessor can make debugging more difficult since it obfuscates the actual value.
-Remember the preprocessor is basically just copy and paste, so debuggers will see the value
-8 instead of LENGTH_MAX.
+Remember the preprocessor is basically just copy and paste, so debuggers will see the value 8 instead of LENGTH_MAX.
+In combination with this obfuscation, it is very important that macros are syntatically valid.
+There shall be no ';' at the end of a macro definition.
+The allowed macros are explained in MISRA C 2004 rule 19.4.
+- Constant values
+- Constant expressions
+- Macros expanding into an expression
+- Storage class specifiers
+- braced initialiser
+- Parenthesised expressions
+- String literals
+- Do while zero construct\*
 
-This rule also advises against variatic arguments (like with printf), token pasting, and recursive macros.
+shown below
+```
+/* The following are compliant */
+#define PI 3.14159F /* Constant */
+#define XSTAL 10000000 /* Constant */
+#define CLOCK (XSTAL/16) /* Constant expression */
+#define PLUS2(X) ((X) + 2) /* Macro expanding to expression */
+#define STOR extern /* storage class specifier */
+#define INIT(value){ (value), 0, 0} /* braced initialiser */
+#define CAT (PI) /* parenthesised expression */
+T#define FILE_A "filename.h" /* string literal */
+#define READ_TIME_32() \
+    do { \
+        DISABLE_INTERRUPTS (); \
+        time_now = (uint32_t)TIMER_HI << 16; \
+        time_now = time_now | (uint32_t)TIMER_LO; \
+        ENABLE_INTERRUPTS (); \
+    } while (0) /* example of do-while-zero */
+```
+
+\*The do-while one to me is a bit weird, but from what I've researched it seems to try and avoid the faults of the preprocessor.
+The do-while is a way to declare variables in more complicated expressions, but this seems like a hack.
+
+Below are listed as not compliant
+
+```
+/* the following are NOT compliant */
+#define int32_t long /* use typedef instead */
+#define STARTIF if( /* unbalanced () and language redefinition */
+#define CAT PI /* non-parenthesised expression */
+```
+
+NASA further says when defining a macro you shall not define them inside a block or function, and the usage of #undef shall not be used.
+
+The preprocessor can do much more than these defines and includes though.
+Its operations includes conditional compilation, header guards, token pasting, and recursion.
 I gotta be honest recursive macros just sounds evil.
 
-NASA also says to avoid conditional compilation if possible since it makes exponentially more test cases.
+Conditional compilation are the statements like `#if, #ifdef, #elif, #else, #ifndef, #endif`.
+You have probably used them for header guards.
+```
+/*construct for a header guard*/
+#ifndef <HEADER_FILE>
+#define <HEADER_FILE>
+
+/*your declarations here*/
+
+#endif
+```
+
+NASA says this is about how far you should go with these conditionals, but sometimes it is unavoidable.
+If you must use them beyond the standard header guard, all `#else, #elif, and #endif` must reside in the same file as their `#if or #ifdef`.
+Adding too many conditional compilations will exponentially create more test cases.
+On the topic of header files, MISRA C 2004 rules 8.1, 8.8, 19.1, 19.2, 19.15, 20.1 explains more details.
+
+Token pasting is probably something most new people to C haven't even heard about.
+Their usage is defined by using '#' or "##" inside the #define macro.
+That little assert statement in rule 5 is a good example with "#e".
+The '#' turns the parameter you passed in into a string literal, and "##" concatenates two tokens.
+Both NASA documents says to not use token pasting, but rule 5 with the assert statement has it.
+It could be argued it's a simple macro, but I think it's more from MISRA c 2004 rule 19.12.
+This rules states that there shall only be on occurance of the '#' or "##" operators in a macro definition.
+Rule 19.13 advises against using them entirely though.
+
+This rule also advises against variatic arguments (like with printf), token pasting, and recursive macros.
+
 
 ### 9. Pointers should only use one level of dereferencing
 
