@@ -307,7 +307,8 @@ T#define FILE_A "filename.h" /* string literal */
 ```
 
 \*The do-while one to me is a bit weird, but from what I've researched it seems to try and avoid the faults of the preprocessor.
-The do-while is a way to declare variables in more complicated expressions, but this seems like a hack.
+The do-while is a way to declare variables in more complicated expressions while maintaining a scope.
+It's a bit of a hack, but a more acceptable one.
 
 Below are listed as not compliant
 
@@ -351,7 +352,6 @@ This rules states that there shall only be on occurance of the '#' or "##" opera
 Rule 19.13 advises against using them entirely though.
 
 This rule also advises against variatic arguments (like with printf), token pasting, and recursive macros.
-
 
 ### 9. Pointers should only use one level of dereferencing
 
