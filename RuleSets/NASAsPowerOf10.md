@@ -11,21 +11,23 @@ Additionally, these rules do not explicity go over input sanitization or overflo
 Despite this, I feel it is at least important to know what rules you can implement given your circumstance.
 
 Below is my interpretation and my personal take for NASA's rules.
-I understand most programmers are not coding rovers or satellites, so not every rule may apply especially considering your language.
-I would still suggest to read NASA's documentation as it provides insight into their expectations and reasonings.
+From the sources I have read they really just regurgitate NASA's rules which is nice, but not inciteful.
+The NASA power of 10 doc is from June 2006, but there is the JPL C Standard doc that is from March 2009.
+The NASA power of 10 doc that most people see is a good document, but it doesn't provide the more niche details as the JPL C Standard and MISRA C documents.
+I would heavily suggest you read the documentation in sources as it provides insight into their expectations and reasonings.
+NASA's has good reasoning as to why they do what they do.
 
 ## Note For Other Languages
 
-Not every language can follow all 10 of these rules.
-Weakly typed and OOP languages make it impossible to avoid the HEAP, and some languages abstract away pointers.
-NASA has their reason for avoiding garbage collecting languages.
-They can be unpredictable and take up extra over head.
-Despite this, most languages should be able to follow all but 3, 9, and 10.
-Rule 8 isn't relevant to most languages since the most you can do is import files.
-Rules 9 and 10 are a little iffy based on the language.
-Weakly typed languages can't follow rule 10 as they don't know the data type.
-Imagine launching a rover in Python and it turns out you forgot to test a method containing a type error.
-Rule 9 can also be harder to follow since some languages abstract pointers and dereferencing is implicit.
+I understand that most programmers are not coding rovers, satellites, or rockets so not every rule may be applicable.
+However, I do feel it is important to know what rules you can implement even if it's just a web app.
+Most of NASA's rules relate to code style and readability which any language can implement.
+Some of the more C focused rules like HEAP usage, preprocessor, and pointers can't apply to other languages.
+Weakly typed and OOP languages make it impossible to avoid the HEAP.
+Some languages abstract away pointers into objects or arrays.
+Some language's preprocessor amounts to just import statements.
+There is also the rule about compiling with max pedanticness which favors strongly typed languages.
+In conclusion (oh god I sound like AI), the rules focus on C, but it's still nice to know the rules.
 
 ### 1. Have a clear simple control flow
 
@@ -353,25 +355,33 @@ Rule 19.13 advises against using them entirely though.
 
 This rule also advises against variatic arguments (like with printf), token pasting, and recursive macros.
 
-### 9. Pointers should only use one level of dereferencing
+### 9. Pointers should at most have two levels of dereferencing
 
-This rule also discourages heavily the usage of function pointers. The justification makes sense as how exactly does a static
-analyzer even know where to go.
+The NASA Power of 10 doc most people see it says "no more than one level of dereferencing should be used."
+To align more with the JPL C Standard and MISRA I have included "two levels of dereferencing."
+The point of this rule is to improve code clarity.
+I've seen people deal with quadruple pointers and thinking how did they even get there.
+Having multiple dereferences, especially with usage of pre/post incremenation, can be confusing.
+An important note to add here is that NASA says you should only have a declaration of at most 2 levels of indirection.
+Like this -> `char** string_array` not -> `char*** super_string_array`.
+If you want to see more examples look at MISRA C advisory rule 17.5.
+This is said in their JPL C Standard rule 26 and MISRA C advisory rule 17.5.
+This rule allows for the usage of 2D array or pointer to pointers.
+Most of the time you'll only ever need two levels of indirection.
+They have some leniency, but you'll need a strong reason for that 3D array or array of 2D arrays.
+There are a few dereferencing operators.
+They are `[], *, ->`.
+\* is the standard dereferencing operator,
+-> is for accessing a member from a struct pointer, and
+[] is dereferencing with a given offset (hence zero indexing).
+These operations should not be hidden in a macro or be inside typedefs.
+These operations should be explicit as they are the culprits for segmentation faults.
 
-Levels of dereferencing can be confusing too. I've seen people deal with quadruple pointers and thinking how did they even get there.
-Structs can help, but they can either increase confusion or lessen it. This rule doesn't prohibit multi level pointers, it just says be smart about them.
-If you do need to dereference more than one level I would say to have a middle variable to keep intention clear.
+One aspect of dereferencing is pointer arithmetic which MISRA C rules 17.1 - 17.4 explain.
+In summary array indexing shall be the only form of pointer arithmetic, and pointer arithmetic shall only be done with arrays.
 
-<probably use a linked list example instead>
-char** array_of_strings = {. . .}
-char* string_from_array = *(array_of_strings + x)
-char first_letter = *string_from_array
-
-instead of 
-char** array_of_strings = {. . .}
-char first_letter = *(*(array_of_strings + x))
-
-Yes you could use array subscript notation, but this is just an example. 
+This rule also discourages heavily the usage of function pointers.
+The justification makes sense as how exactly does a static analyzer even know where to go.
 
 ### 10. Compile with all pedantic flags and all warnings
 
@@ -379,18 +389,17 @@ This depends on the compiler and is more suited for strongly typed languages.
 for gcc there is `-Wextra -Werror -Wpedantic.`
 There is also a built in ASAN in gcc by using `-fsanitize=address`
 
-NASA uses `gcc –Wall –pedantic –std=iso9899:1999`
+NASA uses `gcc –Wall –Wpedantic –std=iso9899:1999`
 
 There are also other flags like
 ```
 -Wtraditional
 -Wshadow
--Wpointer-arith
+-Wpointer-arith /*included in -Wpedantic*/
 -Wcast-qual
 -Wcast-align
 -Wstrict-prototypes
 -Wmissing-prototypes
--Wconversion
 ```
 
 ## Sources
@@ -402,3 +411,6 @@ There are also other flags like
 [Tiger Bettle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md)
 
 [MISRA C 2004](https://caxapa.ru/thumbs/468328/misra-c-2004.pdf)
+
+[Low Level NASA Power of 10 Video](https://www.youtube.com/watch?v=GWYhtksrmhE)
+Thank you Low Level to getting me interested in NASA's Power of 10 in the first place
