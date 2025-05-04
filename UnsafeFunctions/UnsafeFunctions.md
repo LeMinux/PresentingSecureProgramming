@@ -4,6 +4,14 @@ Yeah there are a lot
 
 ## BAD FUNCTIONS
 
+- atoi(), atof(), atol()
+    ASCII to integer
+    ASCII to float
+    ASCII to long
+    If you're wondering what the 'a' meant :P
+    <undefined behavior>
+    <oveflow prone>
+
 - strcpy()
     <buffer overflows>
 
@@ -18,6 +26,7 @@ Yeah there are a lot
 
 - gets()
     <huge buffer overflow problem>
+    deprecated
 
 - mktemp()
 
@@ -73,6 +82,8 @@ be better of using something else.
     <todo explanation>
 
 ## ALTERNATIVES
+
+- strtol()
 
 - strncat(char* destination, const char* source, size_t n)
     
