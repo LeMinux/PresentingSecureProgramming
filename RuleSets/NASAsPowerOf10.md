@@ -357,41 +357,62 @@ This rule also advises against variatic arguments (like with printf), token past
 
 ### 9. Pointers should at most have two levels of dereferencing
 
-The NASA Power of 10 doc most people see it says "no more than one level of dereferencing should be used."
-To align more with the JPL C Standard and MISRA I have included "two levels of dereferencing."
-The point of this rule is to improve code clarity.
-I've seen people deal with quadruple pointers and thinking how did they even get there.
-Having multiple dereferences, especially with usage of pre/post incremenation, can be confusing.
-An important note to add here is that NASA says you should only have a declaration of at most 2 levels of indirection.
-Like this -> `char** string_array` not -> `char*** super_string_array`.
+The NASA Power of 10 doc most people see says "no more than one level of dereferencing should be used."
+To align more with the JPL C Standard and MISRA I made it "two levels of dereferencing."
+This restriction also applies to the declaration of pointer saying there should be no more than two levels of indirection.
+Some examples are
+```
+int8_t * s1;    /* compliant */
+int8_t ** s2;   /* compliant */
+int8_t *** s3;  /* not compliant */
+
+void someFunction(char* some_parameter){. . .}   /* compliant */
+void someFunction(char** some_parameter){. . .}  /* compliant */
+void someFunction(char*** some_parameter){. . .} /* not compliant */
+```
 If you want to see more examples look at MISRA C advisory rule 17.5.
-This is said in their JPL C Standard rule 26 and MISRA C advisory rule 17.5.
-This rule allows for the usage of 2D array or pointer to pointers.
+
+This way 2D arrays or pointer to pointers can be used.
 Most of the time you'll only ever need two levels of indirection.
-They have some leniency, but you'll need a strong reason for that 3D array or array of 2D arrays.
-There are a few dereferencing operators.
+This is a "should" rule, but you'll need a strong reason for that 3D array or array of 2D arrays.
+
+The point of this rule is to improve code clarity.
+I've seen people create quadruple pointers and thinking how did they even get there.
+Having multiple dereferences, especially with usage of pre/post incremenation, can be confusing.
+There are three dereferencing operators.
 They are `[], *, ->`.
 \* is the standard dereferencing operator,
 -> is for accessing a member from a struct pointer, and
 [] is dereferencing with a given offset (hence zero indexing).
-These operations should not be hidden in a macro or be inside typedefs.
+These operations should not be hidden in a macro or be inside typedef declarations.
 These operations should be explicit as they are the culprits for segmentation faults.
+Avoid things like
+```
+typedef int8_t* INTPTR
+INTPTR* some_pointer; /*creating an implicit double pointer*/
 
-One aspect of dereferencing is pointer arithmetic which MISRA C rules 17.1 - 17.4 explain.
-In summary array indexing shall be the only form of pointer arithmetic, and pointer arithmetic shall only be done with arrays.
+#define GET_VALUE(x) (*x)
+GET_VALUE(*x) /* expands to **x */
+```
+
+There is also another aspect of dereferencing which is pointer arithmetic.
+MISRA C rules 17.1 - 17.4 explain some rules on what is best.
+In summary array indexing shall be the only form of pointer arithmetic, and pointer arithmetic shall only be done within arrays.
 
 This rule also discourages heavily the usage of function pointers.
-The justification makes sense as how exactly does a static analyzer even know where to go.
+This is mostly for static analyzers and tool checkers.
+There isn't a way to know where the function pointer will go since it's run time dependent.
 
 ### 10. Compile with all pedantic flags and all warnings
 
-This depends on the compiler and is more suited for strongly typed languages.
-for gcc there is `-Wextra -Werror -Wpedantic.`
-There is also a built in ASAN in gcc by using `-fsanitize=address`
+This depends on the compiler.
+for gcc there is `-Wextra -Werror -Wpedantic`.
+There is also a built in ASAN in gcc by using `-fsanitize=address`.
+Note that you shouldn't ship out your code with ASAN enabled it's for debugging memory.
 
-NASA uses `gcc –Wall –Wpedantic –std=iso9899:1999`
+According to the JPL C Coding Standard, NASA uses `gcc –Wall –Wpedantic –std=iso9899:1999` (iso9899:1999 is C99).
 
-There are also other flags like
+There are also other flags for gcc like
 ```
 -Wtraditional
 -Wshadow
