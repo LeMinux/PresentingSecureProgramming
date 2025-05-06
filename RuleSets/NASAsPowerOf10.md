@@ -12,7 +12,6 @@ Despite this, I feel it is at least important to know what rules you can impleme
 
 Below is my interpretation and my personal take for NASA's rules.
 From the sources I have read they really just regurgitate NASA's rules which is nice, but not inciteful.
-The NASA power of 10 doc is from June 2006, but there is the JPL C Standard doc that is from March 2009 which incorporates the Power of 10 doc.
 The NASA power of 10 doc that most people see is a good document, but it doesn't provide the more niche details as the JPL C Standard and MISRA C documents.
 I would heavily suggest you read the documentation in sources as it provides insight into their expectations and reasonings.
 
@@ -29,43 +28,48 @@ Some of NASA's rules relate to readability which any language can implement.
 
 ### 1. Have a clear simple control flow
 
-I like to think of this rule as having a clear path of branching.
-Logic errors are the result of improper handling of branching, so if
-you can make your flow more "laminar" and explicit it's easier to test and audit.
-This includes early exiting from a function as it's more often the simplest solution.
-This way you avoid unnecessary holding values and checks.
+This rule in combination with 4 and 6 helps create clean code that's easy to audit for humans and tool-based analysis.
+A simple control flow can reveal logic errors that otherwise could have remained hidden.
+It also incentivises breaking up work into tasks.
 
 To help facilitate a simple control flow, NASA bans the usage of goto, setjmp, longjmp, and recursion.
 From what I can see though, they do not say anything about break or continue statements.
-I know some of my professors absolutely hated break and continue, but I haven't seen any saftey standard ban their usage from my research.
+I know some of my professors absolutely hated break and continue, but I haven't seen any saftey standard ban their usage.
 Break and continue are simply another tool that can be used in the right situation.
 Sometimes it's more clear to use break or continue sometimes it's not it just depends on what is more readable.
+Speaking of readability, early exiting from a funtion is a valid option for NASA.
+Again it just depends on what's the simpler and most readable control flow.
 
 NASA avoids recursion as they must have certainty in boundedness.
-Embedded systems don't have much memory, and the stack is part of that memory.
 What I like to call the "recursion tax" where each method call adds its parameters, return pointer, and frame to the stack can pass the bounds of the stack if the tax becomes too much.
 Perhaps your testing shows it is within bounds most of the time, but what happens during unexpected behavior?
-All you really know is that it should eventually reach the base case, or blow out the stack.
-Imagine a server running in an infinite loop using recursion slowly using more of the stack, but not returning back to the original calling function.
-Eventually the process accesses out of bound memory and the OS must kill the process.
+In this case all you really know is that it should eventually reach the base case or blow out the stack.
+NASA handles this concern of run away code in rule 2.
 Threading is also a concern.
 Each thread has their own stack in the same memory space, so it is possible for a recursive function in a thread to completely clobber another thread.
-As mentioned before there isn't much space, so these threads must have verifiable bounds as well.
 I do recognize the usage of recursion.
 Some problems may just be too complex for iterative implementations like trees.
 I would say to avoid using recursion if you can as any recursive solution can be implemented in an iterative one.
 
-Setjmp and longjmp make sense as well given the embedded environment.
+Setjmp and longjmp make sense given the embedded environment.
 It's like using a super sized out of scope goto.
 Supposedly they are useful for getting out of deep errors.
 However, now you jumped back to a state with all the stuff you've just done.
 You haven't reverted the code you have just jumped back to a section in the text segment and set the stack pointer to where it was at that state.
 Now the programmer is left in a state where they can't free, close, or clean what they've just done.
-Now yes if you plan to immediately exit it might be fine, but if not you leave yourself in a bad state.
-NASA can't afford to exit the program as they'll lose communication to the equipment.
+Now yes if you plan to immediately exit it might be fine, but if not you're leave yourself in a bad state.
+Keep in mind that NASA can't afford to exit the program as they'll lose communication to the equipment.
 
-Goto is a little weird. I've seen some valid uses for goto like to jump to handling errors, but I feel its usage should be minimal if at all.
-It's usage does break a clear flow especially when used in to jump out of a loop.
+Goto is a little weird.
+Goto isn't inheriently evil.
+I've seen some valid uses for goto like jumping to handle clean up.
+Deep nested loops as well, but I think fixing the deep nesting would be better.
+When there wasn't structed constructs like for and while it would of course be abused.
+However, we have structed programming now.
+Goto now adays I feel is a signal of breaking control flow or trying to force its usage.
+It feels more like you've programmed yourself into a corner and goto is the only way out.
+
+
 
 ### 2. Give all terminating loops a fixed upper bound
 
