@@ -12,22 +12,20 @@ Despite this, I feel it is at least important to know what rules you can impleme
 
 Below is my interpretation and my personal take for NASA's rules.
 From the sources I have read they really just regurgitate NASA's rules which is nice, but not inciteful.
-The NASA power of 10 doc is from June 2006, but there is the JPL C Standard doc that is from March 2009.
+The NASA power of 10 doc is from June 2006, but there is the JPL C Standard doc that is from March 2009 which incorporates the Power of 10 doc.
 The NASA power of 10 doc that most people see is a good document, but it doesn't provide the more niche details as the JPL C Standard and MISRA C documents.
 I would heavily suggest you read the documentation in sources as it provides insight into their expectations and reasonings.
-NASA's has good reasoning as to why they do what they do.
 
 ## Note For Other Languages
 
 I understand that most programmers are not coding rovers, satellites, or rockets so not every rule may be applicable.
-However, I do feel it is important to know what rules you can implement even if it's just a web app.
-Most of NASA's rules relate to code style and readability which any language can implement.
 Some of the more C focused rules like HEAP usage, preprocessor, and pointers can't apply to other languages.
 Weakly typed and OOP languages make it impossible to avoid the HEAP.
 Some languages abstract away pointers into objects or arrays.
 Some language's preprocessor amounts to just import statements.
 There is also the rule about compiling with max pedanticness which favors strongly typed languages.
-In conclusion (oh god I sound like AI), the rules focus on C, but it's still nice to know the rules.
+However, I do feel it is important to know what rules you can implement even if it's for a web app.
+Some of NASA's rules relate to readability which any language can implement.
 
 ### 1. Have a clear simple control flow
 
@@ -37,28 +35,37 @@ you can make your flow more "laminar" and explicit it's easier to test and audit
 This includes early exiting from a function as it's more often the simplest solution.
 This way you avoid unnecessary holding values and checks.
 
-NASA in this rule also bans the use of goto, setjmp, longjmp, and recursion. I feel these were added
-to help fix errors quickly. In the event of troubleshooting an error removing these constructs can help find it more quickly.
+To help facilitate a simple control flow, NASA bans the usage of goto, setjmp, longjmp, and recursion.
+From what I can see though, they do not say anything about break or continue statements.
+I know some of my professors absolutely hated break and continue, but I haven't seen any saftey standard ban their usage from my research.
+Break and continue are simply another tool that can be used in the right situation.
+Sometimes it's more clear to use break or continue sometimes it's not it just depends on what is more readable.
 
-NASA avoid recursion as they must have certainty in boundedness. Embedded systems deal heavily with the stack, and they don't have much storage.
-What I like to call the "recursion tax" where each method call adds its parameters, return pointer, and frame to the stack
-can pass the bounds of the stack if the tax becomes too much. You also don't know when the recursion
-will end. All you really know is that it should eventually reach the base case.
-It can also be more difficult to troubleshoot as you now need to figure out how all these calls connect.
-This doesn't mean if you're not using an embedded system you shouldn't worry.
-Imagine a server running in an infinite loop using indirect recursion slowly using more of the stack,
-but not returning back to the original calling function. Eventually the process accesses out of bound memory and the OS must kill the process.
-I do recognize the usage of recursion, some problems may just be too complex for iterative implementations.
-I would say to avoid using recursion if you can. You could implement linked list traversal as recursive, but an iterative solution is more simple and contained.
+NASA avoids recursion as they must have certainty in boundedness.
+Embedded systems don't have much memory, and the stack is part of that memory.
+What I like to call the "recursion tax" where each method call adds its parameters, return pointer, and frame to the stack can pass the bounds of the stack if the tax becomes too much.
+Perhaps your testing shows it is within bounds most of the time, but what happens during unexpected behavior?
+All you really know is that it should eventually reach the base case, or blow out the stack.
+Imagine a server running in an infinite loop using recursion slowly using more of the stack, but not returning back to the original calling function.
+Eventually the process accesses out of bound memory and the OS must kill the process.
+Threading is also a concern.
+Each thread has their own stack in the same memory space, so it is possible for a recursive function in a thread to completely clobber another thread.
+As mentioned before there isn't much space, so these threads must have verifiable bounds as well.
+I do recognize the usage of recursion.
+Some problems may just be too complex for iterative implementations like trees.
+I would say to avoid using recursion if you can as any recursive solution can be implemented in an iterative one.
 
-Setjmp and longjmp make sense as well given the embedded environment. it's like using a super sized out of scope goto.
-I haven't used them, and I haven't had the need for them. Supposedly they are useful for getting out of deep errors. 
+Setjmp and longjmp make sense as well given the embedded environment.
+It's like using a super sized out of scope goto.
+Supposedly they are useful for getting out of deep errors.
 However, now you jumped back to a state with all the stuff you've just done.
-You haven't reverted the code at all you have just jumped back to a section in the text segment and set the stack pointer to where it was at that state. Now
-the programmer is left in a state where they can't free, close, or clean what they've just done. Now yes if you plan to immediately exit it might be fine, but
-if not you leave yourself in a bad state.
+You haven't reverted the code you have just jumped back to a section in the text segment and set the stack pointer to where it was at that state.
+Now the programmer is left in a state where they can't free, close, or clean what they've just done.
+Now yes if you plan to immediately exit it might be fine, but if not you leave yourself in a bad state.
+NASA can't afford to exit the program as they'll lose communication to the equipment.
 
 Goto is a little weird. I've seen some valid uses for goto like to jump to handling errors, but I feel its usage should be minimal if at all.
+It's usage does break a clear flow especially when used in to jump out of a loop.
 
 ### 2. Give all terminating loops a fixed upper bound
 
@@ -411,6 +418,7 @@ There is also a built in ASAN in gcc by using `-fsanitize=address`.
 Note that you shouldn't ship out your code with ASAN enabled it's for debugging memory.
 
 According to the JPL C Coding Standard, NASA uses `gcc –Wall –Wpedantic –std=iso9899:1999` (iso9899:1999 is C99).
+I use `gcc -Wall -Werror -Wpedantic` for my code.
 
 There are also other flags for gcc like
 ```
@@ -427,11 +435,11 @@ There are also other flags for gcc like
 
 [Nasa's Power of 10](https://web.eecs.umich.edu/~imarkov/10rules.pdf)
 
-[JPL C Coding Standards](https://yurichev.com/mirrors/C/JPL_Coding_Standard_C.pdf)
+[JPL C Coding Standards](https://github.com/stanislaw/awesome-safety-critical/blob/master/Backup/JPL_Coding_Standard_C.pdf)
 
 [Tiger Bettle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md)
 
 [MISRA C 2004](https://caxapa.ru/thumbs/468328/misra-c-2004.pdf)
 
 [Low Level NASA Power of 10 Video](https://www.youtube.com/watch?v=GWYhtksrmhE)
-Thank you Low Level to getting me interested in NASA's Power of 10 in the first place
+Thank you Low Level for getting me interested in NASA's Power of 10 in the first place
