@@ -11,7 +11,8 @@ Additionally, these rules do not explicity go over input sanitization or overflo
 Despite this, I feel it is at least important to know what rules you can implement given your circumstance.
 
 Below is my interpretation and my personal take for NASA's rules.
-From the sources I have read they really just regurgitate NASA's rules which is nice, but not inciteful.
+From the sources I have read they really just regurgitate NASA's rules which is nice but not inciteful.
+NASA has their rules for their environment, but how applicable are these rules to general coding?
 The NASA power of 10 doc that most people see is a good document, but it doesn't provide the more niche details as the JPL C Standard and MISRA C documents.
 I would heavily suggest you read the documentation in sources as it provides insight into their expectations and reasonings.
 
@@ -21,7 +22,7 @@ I understand that most programmers are not coding rovers, satellites, or rockets
 Some of the more C focused rules like HEAP usage, preprocessor, and pointers can't apply to other languages.
 Weakly typed and OOP languages make it impossible to avoid the HEAP.
 Some languages abstract away pointers into objects or arrays.
-Some language's preprocessor amounts to just import statements.
+Some preprocessors amount to just import statements.
 There is also the rule about compiling with max pedanticness which favors strongly typed languages.
 However, I do feel it is important to know what rules you can implement even if it's for a web app.
 Some of NASA's rules relate to readability which any language can implement.
@@ -34,17 +35,18 @@ It also incentivises breaking up work into tasks.
 
 To help facilitate a simple control flow, NASA bans the usage of goto, setjmp, longjmp, and recursion.
 From what I can see though, they do not say anything about break or continue statements.
-I know some of my professors absolutely hated break and continue, but I haven't seen any saftey standard ban their usage.
+I know some of my professors absolutely hated break and continue.
 Break and continue are simply another tool that can be used in the right situation.
 Sometimes it's more clear to use break or continue sometimes it's not it just depends on what is more readable.
 Speaking of readability, early exiting from a funtion is a valid option for NASA.
 Again it just depends on what's the simpler and most readable control flow.
 
 NASA avoids recursion as they must have certainty in boundedness.
+They want to have an acyclic function call graph to prove execution falls within bounds.
 What I like to call the "recursion tax" where each method call adds its parameters, return pointer, and frame to the stack can pass the bounds of the stack if the tax becomes too much.
 Perhaps your testing shows it is within bounds most of the time, but what happens during unexpected behavior?
 In this case all you really know is that it should eventually reach the base case or blow out the stack.
-NASA handles this concern of run away code in rule 2.
+NASA handles this concern of run away code in rule 2 with the absence of recursion.
 Threading is also a concern.
 Each thread has their own stack in the same memory space, so it is possible for a recursive function in a thread to completely clobber another thread.
 I do recognize the usage of recursion.
@@ -57,46 +59,50 @@ Supposedly they are useful for getting out of deep errors.
 However, now you jumped back to a state with all the stuff you've just done.
 You haven't reverted the code you have just jumped back to a section in the text segment and set the stack pointer to where it was at that state.
 Now the programmer is left in a state where they can't free, close, or clean what they've just done.
-Now yes if you plan to immediately exit it might be fine, but if not you're leave yourself in a bad state.
-Keep in mind that NASA can't afford to exit the program as they'll lose communication to the equipment.
+Now yes if you plan to immediately exit it might be fine, but if not you're leaving yourself in a bad state.
 
 Goto is a little weird.
-Goto isn't inheriently evil.
+Goto isn't inheriently evil as some think.
 I've seen some valid uses for goto like jumping to handle clean up.
 Deep nested loops as well, but I think fixing the deep nesting would be better.
-When there wasn't structed constructs like for and while it would of course be abused.
-However, we have structed programming now.
+When there wasn't structured constructs like for and while it would of course be abused.
+There simply wasn't another option for flow.
+However, we have structured programming now.
 Goto now adays I feel is a signal of breaking control flow or trying to force its usage.
 It feels more like you've programmed yourself into a corner and goto is the only way out.
 
-
-
 ### 2. Give all terminating loops a fixed upper bound
 
-Notice this says "terminating" loops. These are loops that are not expected to run forever.
-Non-terminating loops should be verified they won't stop like waiting for network requests,
-and there should only be one non-terminating loop per thread/task.
+Notice this says "terminating" loops.
+Non-terminating loops, like waiting for network requests, should be verified they won't stop.
+NASA says there should only be one non-terminating per task or thread specifically for receiving and processing.
+These are also explicity non-terminating loops not loops that are non-terminating until some condition.
 
-This rule mostly applies to loops that have a variable number of iterations. Examples would be traversing a linked list
-or traversing a string. The max should be related to your assumptions on what would be an unreasonable amount of iterations.
+This rule mostly applies to loops that have a variable number of iterations.
+An examples would be traversing a linked list, or traversing a string.
+The max should be related to your assumptions on what would be an unreasonable amount of iterations.
 If you are dealing with file paths what is the maximum length a file path can be?
+Basically if you reach this number of iterations something has gone wrong.
 
-However, in general programming you might have some while(true) waiting for some condition to exit.
+However, in general programming you might have some while(true) running until some exit condition.
+Perhaps a program that only end when a user clicks to exit the program.
 In this case you would want to test that only that condition can terminate the loop.
-You may have it so only a signal like SIGINT (CTRL + C) can be the only option
-to terminate, but how secure this would be depends on your environment and implimentation.
+NASA doesn't really have a statement for this scenarios.
 
-Async functions I think should also fall under here. I didn't see anything about
-asynchronous functions in NASA's documentation, but it is a common practice to set
-a timeout for asynchronous things. This way your program won't hang there waiting, and you can return an error.
+Async functions should also get similar treatment.
+I didn't see anything about asynchronous functions in NASA's documentation, but it is a common practice to set a timeout for asynchronous things.
+This way your program won't hang there waiting, and you can return an error.
+Regex should also have a timeout depending on the regex.
+There are some "evil regex" patterns that can act as a Denial of Service.
+This wikipedia article explains about it (Wikipedia ReDoS)[https://en.wikipedia.org/wiki/ReDoS]
 
 ### 3. Do not use dynamic memory after task initialization
 
-I believe what they mean by "task initialization" are things such as creation of threads.
+I believe what they mean by "task initialization" are things such as the creation of threads.
 When creating a thread you can give it a fixed segment of memory for the thread's stack to use.
 
 This rule can be especially hard to follow, but it has its reason.
-It's a common rule for anything saftey critical, and is a general rule to avoid the HEAP with embedded systems.
+It's a common rule for anything saftey critical, and it is a general rule to avoid the HEAP with embedded systems.
 You really wouldn't want to deal with fragmentation and best fit algortithms in a system that already doesn't have a lot of memory.
 The most efficent use of memory is leaving no gaps which is what the stack does.
 
@@ -125,7 +131,7 @@ also functions that internally use dynamic memory like.
 - strdup()
 - fopen()
 
-So how exactly would someone take dynamic input?
+So how exactly would someone create dynamic behavior?
 There are a couple of ways.
 1. Set some maximum bound
 2. Object pools
@@ -144,14 +150,12 @@ This rule basically says to keep your functions smaller for easier auditing.
 I believe this rule does not apply to comments.
 The JPL Coding Standard and NASA power of 10 both say 60 lines of code.
 Tiger Bettle also uses this rule and they have their limit at 70 lines.
-I personally think 80 is the absolute maximum because if the function goes past 80 lines there needs to be reconsideration on logic.
 
-NASA doesn't say anything about column limits though, but excessively long lines can hurt readability.
-80 character column limit seems to be more prefered, even I try to stick by it, but It's not the end of the world if it goes past 80 characters.
-100 characters is the maximum I would try, but I don't think anything should go to 120 characters.
+NASA doesn't say anything about column limits in these documents, but excessively long lines can hurt readability.
+80 character column limit seems to be more prefered, even I try to stick by it, but It's not the end of the world if code goes past 80 characters.
+100 characters is the maximum I would try for less verbose languages, but even for more verbose languages I don't think anything should go to 120 characters.
 
-Combined in this rule is having one line per statement.
-This includes variable statements.
+Combined in this rule is having one line per statement and declaration.
 
 ```
 int obtain_value = getValue(), obtain_value2 = getAnotherValue();
@@ -167,21 +171,31 @@ char* first = some_string;
 char* second = some_string + 1;
 ```
 
-This is for more clarity.
+one line if statements would be like
+
+```
+if( x < 5 )
+    flag = 1
+```
+
+I didn't include curly brackets as what ever syntax style the group chooses would determine it.
+
+This rule aims for more clarity.
 It avoids statements like `int* x,y,z` where only x is actually a pointer and the rest are ints.
 You would need to do `int* x, *y, *z` instead to make them all pointers.
 
 NASA makes a notable exception for for loops since they are technically 3 statements together.
 For loops are fine to keep in a single line.
 This then raises the question of what about boolean expressions in ifs and whiles?
-I think the preferance is to maintain one line if possible since it is technically one large
-boolean statement. Although, sometimes the expressions can get a little long, so splitting into multiple lines can aid readability.
-Honest to god if the conditional statement in an if statment is spread over 5 lines please
-reconsider your logic. Same for if a function accepts too many parameters. NASA places a maximum of 6.
+I think the preferance is to maintain one line if possible since it is technically one large boolean statement.
+Although, sometimes the expressions can get a little long, so splitting into multiple lines can aid readability.
+Honest to god if the conditional statement in an if is spread over 5 lines please reconsider your logic.
+Same for if a function accepts too many parameters.
+NASA places a maximum of 6.
 I believe the max is 6 since the 7th and beyond are placed on the stack instead of a register.
 
-If you have troubles with trying to condense functions, TigerBettle suggests to keep your branching,
-but the contents of the branch can be added into its own method. Also look for any repitition.
+If you have trouble with trying to condense functions, TigerBettle suggests to keep your branching, but the contents of the branch can be added into its own method.
+Also look for any repitition.
 The benefit of adding them to methods also allows to you verify their arguments in a single place.
 
 ### 5. Assertion density should average 2 with assertions having no side effects and always boolean
