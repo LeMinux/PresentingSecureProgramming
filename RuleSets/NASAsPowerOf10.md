@@ -4,16 +4,20 @@
 
 NASA's Power of 10 is very powerful set of rules.
 It is well known for it's strict rules tailored to creating saftey critical code.
-These systems must be developed correctly, or they can result in death or injury of people.
-Howevever, the emphasis is on **saftey critical C code**.
-This means a lot of NASA's reasoning is related to the woes of C and how to make C more safer.
-Depending on your criteria and language used you may not be able to implement every rule.
-Despite this, I feel it is at least important to read NASA's power of 10 as it changes your focus to be more defensive.
+These systems must be developed correctly as people trust their lives with the software developed.
+Keep in mind as you read that these rules focus on **saftey critical C Code**.
+This means that some of NASA's reasoning relates to the woes of C and how to make C safer.
+Depending on your criteria and language you may not be able to implement every rule.
+Despite this, I feel it is at least important to read NASA's power of 10 as it changes your mind to be more defensive.
 
 Below is my interpretation for NASA's rules.
-Keep in mind as you read that these rules are for **saftey critical C Code**.
-NASA has their rules for a reason.
-I want to see how applicable these rules are to general coding or other languages.
+Even if the rules are meant for C, I want to see how applicable they are to general coding or other languages.
+In reality there are many factors that determine applicability.
+It would depend on your team's beliefs and programming language.
+If you have a team like TigerBeetle that's enthusiastic about using NASA's power of 10 that's great.
+If your team just wants to get the web app pushed maybe not.
+
+If you want to see NASA's interpretation and where they got their rules I recommend you read the sources.
 The NASA power of 10 doc that most people see is a good document, but it doesn't provide the more niche details as the JPL C Standard and MISRA C documents.
 I would heavily suggest you read the documents in sources as it provides insight into NASA's expectations and reasonings.
 
@@ -209,7 +213,7 @@ It incentivises breaking up work into tasks that are concise.
 This also means easier unit testing as you have split your tasks into units.
 I believe this rule does not apply to comments.
 The JPL Coding Standard and NASA power of 10 both say 60 lines of code.
-Tiger Bettle also uses this rule, but they have their limit at 70 lines.
+Tiger Beetle also uses this rule, but they have their limit at 70 lines.
 Another part of this rule is a maxium of 6 parameters.
 6 could be the magic number since the 7th and beyond are placed on the stack instead of a register.
 Personally for me having more than 4 parameters is too much
@@ -254,7 +258,7 @@ I think the preferance is to maintain one line if possible since it is technical
 Although, sometimes the expressions can get a little long, so splitting into multiple lines can aid readability.
 Just dont' make the conditional span like 5 lines.
 
-If you have trouble with trying to condense functions, TigerBettle suggests to keep your branching, but the contents of the branch can be added into its own method.
+If you have trouble with trying to condense functions, TigerBeetle suggests to keep your branching, but the contents of the branch can be added into its own method.
 Also look for any repitition.
 The benefit of adding them to methods also allows to you verify their arguments in a single place and creates another unit to test.
 
@@ -288,7 +292,7 @@ Where do you **NOT** use assertions?
 
 In these cases you should **VALIDATE** instead.
 This is because assertions are removable for performance reasons.
-If you want to modify the behavior of the default assertions, or don't want them to be removable (TigerBettle) you can create your own.
+If you want to modify the behavior of the default assertions, or don't want them to be removable (TigerBeetle) you can create your own.
 Programs that run infinitely probably don't want to exit the program on assertion failure (especially if your machine is out in space).
 Instead you would want to log it.
 
@@ -538,7 +542,7 @@ There are also other flags for gcc like
 
 [MISRA C 2004](https://caxapa.ru/thumbs/468328/misra-c-2004.pdf)
 
-[Tiger Bettle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md)
+[Tiger Beetle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md)
 
 [Low Level NASA Power of 10 Video](https://www.youtube.com/watch?v=GWYhtksrmhE)
 Thank you Low Level for getting me interested in NASA's Power of 10 in the first place
