@@ -3,9 +3,9 @@
 ## Description
 
 NASA's Power of 10 is very powerful set of rules.
-It is well known for it's strict rules tailored to creating saftey critical code.
+It is well known for it's strict rules tailored to creating safety critical code.
 These systems must be developed correctly as people trust their lives with the software developed.
-Keep in mind as you read that these rules focus on **saftey critical C Code**.
+Keep in mind as you read that these rules focus on **safety critical C Code**.
 This means that some of NASA's reasoning relates to the woes of C and how to make C safer.
 Depending on your criteria and language you may not be able to implement every rule.
 Despite this, I feel it is at least important to read NASA's power of 10 as it changes your mind to be more defensive.
@@ -16,10 +16,12 @@ In reality there are many factors that determine applicability.
 It would depend on your team's beliefs and programming language.
 If you have a team like TigerBeetle that's enthusiastic about using NASA's power of 10 that's great.
 If your team just wants to get the web app pushed maybe not.
+If the team is just yourself making a little personal project it would depend on what constraints you have or want to have.
+I'm not saying that you must implement these rules because you have read them; more so use these rules when you can.
 
 If you want to see NASA's interpretation and where they got their rules I recommend you read the sources.
-The NASA power of 10 doc that most people see is a good document, but it doesn't provide the more niche details as the JPL C Standard and MISRA C documents.
-I would heavily suggest you read the documents in sources as it provides insight into NASA's expectations and reasonings.
+The NASA power of 10 doc that most people see is a good document, but it doesn't provide the more specific details as the JPL C Standard and MISRA C documents.
+I would heavily suggest you read the documents in sources as it provides insight into NASA's expectations and reasoning.
 
 ## Note For Other Languages
 
@@ -28,7 +30,7 @@ For example, the more C focused rules like HEAP usage, preprocessor, and pointer
 Weakly typed and OOP languages make it impossible to avoid the HEAP.
 Some languages abstract away pointers into objects or arrays.
 Some preprocessors amount to just import statements.
-There is also the rule about compiling with max pedanticness which favors strongly typed languages.
+There is also the rule about compiling with max pedantic-ness which favors strongly typed languages.
 If you are concerned about security read up about security standards for your language.
 You may not be able to implement every rule, but some of NASA's rules relate to readability and defensive coding which any language can implement.
 
@@ -45,8 +47,8 @@ From what I can see though, they do not say anything about break or continue sta
 I know some of my professors absolutely hated break and continue.
 Compared to what NASA bans though, break and continue aren't that bad.
 They are restricted to just loops, and are explicit enough in what they do to flow.
-Speaking of flow, early exiting from a funtion is a valid option for NASA.
-Again it just depends on what's the simpler and most readable in relation to flow.
+Speaking of flow, early exiting from a function is a valid option for NASA.
+Again it just depends on what's simpler and most readable.
 
 NASA avoids recursion as they must have certainty in stack bounds.
 They want to have an acyclic function call graph to prove execution falls within bounds.
@@ -56,30 +58,27 @@ In this case all you really know is that it should eventually reach the base cas
 With the absence of recursion, NASA can handle run away code in a simple manner specified in rule 2.
 Threading is also a concern.
 Each thread has their own stack in the same memory space, so it is possible for a recursive function in a thread to completely clobber another thread.
-Of course this would depend on how the threads are implemented.
 I do recognize the usage of recursion.
 Some problems may just be too complex for iterative implementations like trees or parsing a JSON.
 I doubt that NASA is parsing JSONs on Mars though.
-Depending on your constraints, I would say to avoid using recursion if you can as any recursive solution can be implemented as an iterative one.
+I would say to avoid using recursion if you can as any recursive solution can be implemented as an iterative one.
 
-Setjmp and longjmp make sense given the embedded environment and saftey critical requirements.
-TI haven't used them since I was never in an environment to use them.
+Setjmp and longjmp make sense given the embedded environment and safety critical requirements.
+I haven't used them since I was never in an environment to use them.
 From my understanding it's like a super sized out of scope goto which just sounds like the complete opposite of a simple control flow.
 Supposedly they are useful for getting out of deep errors or useful for exception handling.
 However, because of rules 5 and 7 the exceptions should be caught before they occur.
 This isn't to say exception handling is bad, it's just that C has a different way of catching errors.
-Langauges that have exception handling it is good to use.
+Languages that have exception handling should use it.
 For the most part in normal programming these two methods don't need to be used at all.
 
 Goto is a little weird.
-Goto isn't inheriently evil as some think.
+Goto isn't inherently evil as some think.
+A lot of the hatred is from a time where it was rampantly abused, and this hatred has been passed along.
 I've seen some valid uses for goto like jumping to handle clean up.
 Deep nested loops as well, but I think fixing the deep nesting would be better.
-When there wasn't structured constructs like for and while it would of course be abused.
-There simply wasn't another option for flow.
-However, we have structured programming now.
-Goto now adays I feel is a signal of breaking control flow or trying to force its usage.
-It feels more like you've programmed yourself into a corner and goto is the only way out.
+Goto has this niche usage that can aid in readability, yet feels like an eyesore.
+It makes sense why it's banned for what it can bring, and its ban doesn't hurt anything.
 
 ### 2. Give all terminating loops a statically determinable upper-bound
 
@@ -94,6 +93,7 @@ You might be asking about strings since their length is variable, but NASA says
 > "For standard for-loops the loop bound requirement can be satisfied by making sure that the loop's variables are not referenced or modified inside the body of the loop".
 This is to say if you can obtain the exact number of iterations as an integer that isn't changed inside the loop body it is okay.
 If you can find out what the number of iterations is, then you really don't need to set the upper limit you would validate if that number is within limit.
+This would also apply to for-each loops since there is known end.
 
 Linked List example
 ```
@@ -141,8 +141,8 @@ Like a program that only ends when a user says to or taking user input.
 Case 2 is reading from a file which could have any size, but isn't infinite.
 Files eventually do terminate even if you were given a gigantic file there is only as much storage on disk.
 Problem is you don't know when it'll end it could be any number of iterations.
-Unless you have special criteria for that file it should be fine to read until the end since it should terminate.
-Case 1 I believe would be set as an explicit non-terminating loop with some kind of break or exit on that condition.
+Unless you have special known criteria for files it should be fine to read until the end since it should terminate.
+Case 1 I believe would be set as an explicit non-terminating loop with some kind of break or exit condition.
 It would then be important to verify only that condition is able to break out.
 
 Async functions should also get similar treatment.
@@ -150,7 +150,7 @@ I didn't see anything about asynchronous functions in NASA's documentation, but 
 This way your program won't hang there waiting, and you can return an error.
 Regex should also have a timeout depending on the regex.
 There are some "evil regex" patterns that can act as a Denial of Service.
-This wikipedia article explains about it (Wikipedia ReDoS)[https://en.wikipedia.org/wiki/ReDoS]
+This Wikipedia article explains about it (Wikipedia ReDoS)[https://en.wikipedia.org/wiki/ReDoS]
 
 ### 3. Do not use dynamic memory after initialization
 
@@ -159,9 +159,10 @@ It might be for threads assigned to do a task, or a method that does a task?
 I think it's more than likely when the program finishes initialization.
 
 This rule can be hard to follow, but it has its reason.
-It's a common rule for anything saftey critical, and it is a general rule to avoid the HEAP with embedded systems.
-You really wouldn't want to deal with fragmentation and best fit algortithms in a system that doesn't have a lot of memory.
-As a result of banning dynamic memory, NASA can statically determine the upper bound on stack usage.
+It's a common rule for anything safety critical, and it is a general rule to avoid the HEAP with embedded systems.
+You wouldn't want to deal with fragmentation and best fit algorithms in a system that doesn't have a lot of memory.
+There is also an aspect of unpredictability in memory allocators that can affect performance.
+With all memory strictly on the stack, NASA can statically determine the upper bound on stack usage.
 
 The rule aims to completely avoid all the issues the come with using the HEAP like.
 
@@ -199,28 +200,28 @@ There are a couple of ways.
 Now of course NASA's environment is different than most people.
 You could make that game without dynamic memory, but your team and boss may not like it.
 I can't say to everyone to avoid dynamic memory for all programs.
-I would say keep explicit dynamic allocation to a minimum, but usage of printf or fopen is fine.
+I can say to keep explicit dynamic allocation to a minimum, but usage of printf or fopen is fine.
 This way you have as few mallocs to keep track of.
-Perhaps a static array you pass to a functon with a specified bound parameter is better.
+Perhaps a stack array you pass to a functon with a specified bound parameter is better.
 I don't believe dynamic memory is evil, but it can certainly be mismanaged easily.
-If you handle it properly that's good, but each extra dynamic allocation is a risk.
+If you handle it properly that's good, but each extra allocation is a risk.
 
 ### 4. Function Length should be printable on a page with one statement per line
 
 RIP all the Java and C++ users :P.
 This rule basically says to keep your functions small and concise for easier auditing.
 It incentivises breaking up work into tasks that are concise.
-This also means easier unit testing as you have split your tasks into units.
+This also means easier unit testing as you have now created concise units.
 I believe this rule does not apply to comments.
 The JPL Coding Standard and NASA power of 10 both say 60 lines of code.
 Tiger Beetle also uses this rule, but they have their limit at 70 lines.
-Another part of this rule is a maxium of 6 parameters.
+Another part of this rule is a maximum of 6 parameters.
 6 could be the magic number since the 7th and beyond are placed on the stack instead of a register.
 Personally for me having more than 4 parameters is too much
 
 NASA doesn't say anything about column limits in these documents, but excessively long lines can hurt readability.
-80 character column limit seems to be more prefered, even I try to stick by it, but it's my soft limit.
-100 characters is the maximum I have.
+80 character column limit seems to be more preferred, even I try to stick by it, but it's my soft limit.
+100 characters is my hard limit.
 
 Combined in this rule is having statements and declarations on separate lines.
 
@@ -245,7 +246,7 @@ if( x < 5 )
     flag = 1
 ```
 
-I didn't include curly brackets as what ever coding style is choosen would determine it.
+I didn't include curly brackets as what ever coding style is chosen would determine it.
 
 This rule aims for more clarity.
 It avoids statements like `int* x,y,z` where only x is actually a pointer and the rest are ints.
@@ -254,12 +255,12 @@ You would need to do `int* x, *y, *z` instead to make them all pointers.
 NASA makes a notable exception for for loops since they are technically 3 statements together.
 For loops are fine to keep in a single line.
 This then raises the question of what about boolean expressions in ifs and whiles?
-I think the preferance is to maintain one line if possible since it is technically one large boolean statement.
+I think the preference is to maintain one line if possible since it is technically one large boolean statement.
 Although, sometimes the expressions can get a little long, so splitting into multiple lines can aid readability.
-Just dont' make the conditional span like 5 lines.
+Just don't make the conditional span like 5 lines.
 
 If you have trouble with trying to condense functions, TigerBeetle suggests to keep your branching, but the contents of the branch can be added into its own method.
-Also look for any repitition.
+Also look for any repetition.
 The benefit of adding them to methods also allows to you verify their arguments in a single place and creates another unit to test.
 
 ### 5. There shall be minimally an average of 2 assertions per function with assertions containing no side-effects and must be boolean
@@ -270,7 +271,7 @@ The point is to act on behavior that **should** never happen in real execution.
 The question people have is why have a check for something that shouldn't happen?
 Well programmers make mistakes which often time only show up later, or bugs are hidden due to how logic is laid out.
 Code also changes in development, so assertions can help enforce the new assumptions.
-Basically assertions are guards for the programmers to catch their egregious mistakes.
+Basically assertions are guards for the programmer to catch their egregious mistakes.
 Unit testing can help find errors, but the problem with unit tests is that you would need to write the test.
 You probably won't write a test for something that should never happen.
 This isn't to say that unit tests are not useful; you should use both assertions and unit testing.
@@ -292,7 +293,7 @@ Where do you **NOT** use assertions?
 
 In these cases you should **VALIDATE** instead.
 This is because assertions are removable for performance reasons.
-If you want to modify the behavior of the default assertions, or don't want them to be removable (TigerBeetle) you can create your own.
+If you want to modify the behavior of the default assertions, or don't want them to be removable you can create your own.
 Programs that run infinitely probably don't want to exit the program on assertion failure (especially if your machine is out in space).
 Instead you would want to log it.
 
@@ -318,16 +319,19 @@ Defining an assertion like this allows NASA to log the error with a specified ro
 
 In C this is the best way to accomplish data hiding.
 It also makes debugging easier by reducing the surface area of things to modify.
+I would help too if variable names are clear.
 If a variable is out of scope then it can't be directly modified.
 For the most part, in C it would be declaring the variable at the lowest scope, but there is the static modifier for functions and extern.
-You can use the static key word to declare a function at file scope.
-More specifically it's specifying internal linkage.
-It's kind of like creating a private method since it'll be just in the .c file.
+You can use the static modifier to declare a function at file scope.
+More specifically it's indicating internal linkage.
+It's kind of like creating a private method since it'll be usable only in the source file.
+
 ```
 static void someFunction(){
     . . .
 }
 ```
+
 The opposite of this would be the usage of `extern`.
 This specifies external linkage.
 extern is like making a global variable that is declared in the header file that later gets defined.
@@ -338,20 +342,20 @@ These should only be declared in the header file, and to be included where it is
 This rule discourages the use of using the same variable for different purposes, and shadowing a variable.
 Shadowing a variable can be a problem with extern, so be careful.
 This rule works well in combination with rule 3 since once the function is done the stack is cleared of its work.
-Within this rule is a prefereance for "pure" functions.
+Within this rule is a preference for "pure" functions.
 NASA says these are functions that do not touch global data, avoid storing local state, and do not modify data declared in the calling function indirectly.
 This can be further aided with the use of const and enums.
 Anything that shouldn't be modified should have a const modifier.
-I would like to add to this rule to keep variable names clear for easier auditing.
 
 ### 7. Check all return values of non-void functions and validate passed in parameters
 
 This is the most forgotten rule and is very helpful to catch bugs.
-In the most extreme cases you would be checking the results of printf, but NASA says in cases where the return doesn't matter to cast as void.
+A lot of bugs slip by simply because the return value was not checked.
+In the most extreme cases you would check the results of printf, but NASA says in cases where the return doesn't matter to cast as void.
 so this -> `(void)printf("%s", "Hi")`.
-This way it is explicity saying "I am ignoring this", but also allows for questioning if it should be ignored.
+This way it is explicity said "I am ignoring this", but also allows for questioning if it should be ignored.
 If you are not choosing to ignore the error status, you should check it.
-This will help with troubleshooting in some cases as you won't continue with erronous behavior.
+This will help with troubleshooting in some cases as you won't continue with erroneous behavior.
 
 Validating parameters is probably the most important rule to have in any security focused rule.
 Public functions are well. . . public, so they could accept any kind of input.
@@ -381,15 +385,15 @@ MISRA C 2004 rule 20.3 mentions some ways of conducting validation
 
 The preprocessor can make debugging more difficult since it obfuscates the actual value.
 Remember the preprocessor is basically just copy and paste, so debuggers will see the value 8 instead of LENGTH_MAX.
-In combination with this obfuscation, it is very important that macros are syntatically valid.
+In combination with this obfuscation, it is very important that macros are syntactically valid.
 There shall be no ';' at the end of a macro definition.
 The allowed macros are explained in MISRA C 2004 rule 19.4.
 - Constant values
 - Constant expressions
 - Macros expanding into an expression
 - Storage class specifiers
-- braced initialiser
-- Parenthesised expressions
+- braced initializer
+- Parenthesized expressions
 - String literals
 - Do while zero construct\*
 
@@ -401,8 +405,8 @@ shown below
 #define CLOCK (XSTAL/16)            /* Constant expression */
 #define PLUS2(X) ((X) + 2)          /* Macro expanding to expression */
 #define STOR extern                 /* storage class specifier */
-#define INIT(value){ (value), 0, 0} /* braced initialiser */
-#define CAT (PI)                    /* parenthesised expression */
+#define INIT(value){ (value), 0, 0} /* braced initializer */
+#define CAT (PI)                    /* parenthesized expression */
 T#define FILE_A "filename.h"        /* string literal */
 #define READ_TIME_32() \
     do { \
@@ -455,14 +459,14 @@ That little assert statement in rule 5 is a good example with "#e".
 The '#' turns the parameter you passed in into a string literal, and "##" concatenates two tokens.
 Both NASA documents says to not use token pasting, but rule 5 with the assert statement has it.
 It could be argued it's a simple macro, but I think it's more from MISRA c 2004 rule 19.12.
-This rules states that there shall only be one occurance of the '#' or "##" operators in a macro definition although Rule 19.13 advises against using them entirely.
+This rules states that there shall only be one occurrence of the '#' or "##" operators in a macro definition although Rule 19.13 advises against using them entirely.
 
-Oddly enough they include variatic argument lists in here.
-I suppose it's a double exclusion since you can do variatic arguments with macros and functions.
-Usage of __VA_ARGS__ allows you to make a variatic macro, but under this rule that's not a simple macro.
-Variatic functions are like printf.
-There isn't an explicit reason why variatic functions are banned, but I think it's probably to reduce complexity and allow static analysis.
-Personally I've never needed to use a variatic function, and when I did think about using one I simplified my code instead.
+Oddly enough they include variadic argument lists in here.
+I suppose it's a double exclusion since you can do variadic arguments with macros and functions.
+Usage of __VA_ARGS__ allows you to make a variadic macro, but under this rule that's not a simple macro.
+variadic functions are like printf.
+There isn't an explicit reason why variadic functions are banned, but I think it's probably to reduce complexity and allow static analysis.
+Personally I've never needed to use a variadic function, and when I did think about using one I simplified my code instead.
 
 ### 9. Pointers should at most have two levels of dereferencing
 
