@@ -2,36 +2,40 @@
 
 ## Description
 
-NASA's Power of 10 is very powerful set of rules.
-It is well known for it's strict rules tailored to creating safety critical code.
-These systems must be developed correctly as people trust their lives with the software developed.
+NASA's Power of 10 is a very powerful and strict rule set tailored to developing safety critical software.
+This is software where people's lives, equipment, or the environment is at risk.
+This has not stopped TigerBeetle using these rules for online transaction processing for businesses.
+In a broad sense, it's software where people's lives depend on correct implementation.
 Keep in mind as you read that these rules focus on **safety critical C Code**.
 This means that some of NASA's reasoning relates to the woes of C and how to make C safer.
-Depending on your criteria and language you may not be able to implement every rule.
-Despite this, I feel it is at least important to read NASA's power of 10 as it changes your mind to be more defensive.
+This results in people hardening their mind to these rules, but I believe people should not.
+I feel it is important to read NASA's power of 10 as it changes your mind to be more defensive.
+Not every situation is safety critical or uses a C like language.
+In most situations this should be treated as guidelines to follow rather than strict adherence.
 
 Below is my interpretation for NASA's rules.
-Even if the rules are meant for C, I want to see how applicable they are to general coding or other languages.
-In reality there are many factors that determine applicability.
-It would depend on your team's beliefs and programming language.
-If you have a team like TigerBeetle that's enthusiastic about using NASA's power of 10 that's great.
+Even if the rules are meant for saftey critical C, I want to see how applicable they are to general coding and other languages.
+For example, the rule about the HEAP may not be practical to everyone, but understanding why it is banned helps you minimize it's usage.
+Other than your language, implementation of the rules depends on your team's beliefs.
+If you have a team like TigerBeetle that's enthusiastic about implementing NASA's power of 10 that's great.
 If your team just wants to get the web app pushed maybe not.
-If the team is just yourself making a little personal project it would depend on what constraints you have or want to have.
-I'm not saying that you must implement these rules because you have read them; more so use these rules when you can.
+If the team is yourself making a little personal project it would depend on what constraints you have.
 
-If you want to see NASA's interpretation and where they got their rules I recommend you read the sources.
-The NASA power of 10 doc that most people see is a good document, but it doesn't provide the more specific details as the JPL C Standard and MISRA C documents.
-I would heavily suggest you read the documents in sources as it provides insight into NASA's expectations and reasoning.
+I recommend you read the sources to see NASA's reasoning.
+For example, a lot relates to static analysis.
+The NASA power of 10 doc that most people see is a good document, but misses some details provided in the JPL C Standard and MISRA C documents.
+I would heavily suggest you read the documents in sources.
 
 ## Note For Other Languages
 
 I understand that this rule set is focused on C.
-For example, the more C focused rules like HEAP usage, preprocessor, and pointers can't apply to all languages.
-Weakly typed and OOP languages make it impossible to avoid the HEAP.
+For example, the more C focused rules like HEAP usage, the preprocessor, and pointers can't apply to all languages.
+Weakly typed and some OOP languages abstract away the HEAP taking away some control.
 Some languages abstract away pointers into objects or arrays.
 Some preprocessors amount to just import statements.
-There is also the rule about compiling with max pedantic-ness which favors strongly typed languages.
-If you are concerned about security read up about security standards for your language.
+There is also a rule about compiling with max pedantic-ness which depends on your compiler.
+Every language is different, so you should read security standards for your language.
+For C there is SEI CERT, and web development has OWASP.
 You may not be able to implement every rule, but some of NASA's rules relate to readability and defensive coding which any language can implement.
 
 ## The Rules
@@ -39,46 +43,58 @@ You may not be able to implement every rule, but some of NASA's rules relate to 
 ### 1. Restrict code to very simple control flow constructs
 
 This rule in combination with 4 and 6 helps create clean code that's easy to audit for humans and tool-based analysis.
-Readable code is much easier to make secure and change.
-A simple control flow can reveal logic errors that otherwise could have remained hidden.
+Readable code is considerably easier to make secure and maintain.
+A simple control flow can reveal logic errors that otherwise could have remained hidden by weird control flow.
+Basically, the rule aims to make your control flow as explicit as possible.
 
 To help facilitate a simple control flow, NASA bans the usage of goto, setjmp, longjmp, and recursion.
 From what I can see though, they do not say anything about break or continue statements.
 I know some of my professors absolutely hated break and continue.
-Compared to what NASA bans though, break and continue aren't that bad.
-They are restricted to just loops, and are explicit enough in what they do to flow.
-Speaking of flow, early exiting from a function is a valid option for NASA.
-Again it just depends on what's simpler and most readable.
+I see where the disdain comes from, but I personally don't agree with it.
+They are useful, but they should not be abused.
+They are restricted to loops and are constrained enough in what they do to flow.
+Speaking of flow, NASA doesn't restrict functions to a single exit point.
+Single exits can simplify things, but when you add validation it's often simpiler to exit early.
 
+#### Recursion
+It is true that recursion can create small easily readable functions, but they do have a cost behind the scenes.
 NASA avoids recursion as they must have certainty in stack bounds.
-They want to have an acyclic function call graph to prove execution falls within bounds.
+They want to have an acyclic function call graph that proves execution falls within bounds.
 What I like to call the "recursion tax" where each method call adds its parameters, return pointer, and frame to the stack can pass the bounds of the stack if the tax becomes too much.
-Perhaps your testing shows it is within bounds most of the time, but what happens during unexpected behavior?
-In this case all you really know is that it should eventually reach the base case or blow out the stack.
+Tail recursion optimization solves a big problem with recursion, but there still looms the threat of stack overflows.
+Your testing could show it is within bounds, but what happens during unexpected behavior?
+In this case all you really know is it should eventually reach the base case or blow out the stack.
 With the absence of recursion, NASA can handle run away code in a simple manner specified in rule 2.
-Threading is also a concern.
+On top of that there is Threading.
 Each thread has their own stack in the same memory space, so it is possible for a recursive function in a thread to completely clobber another thread.
 I do recognize the usage of recursion.
 Some problems may just be too complex for iterative implementations like trees or parsing a JSON.
-I doubt that NASA is parsing JSONs on Mars though.
-I would say to avoid using recursion if you can as any recursive solution can be implemented as an iterative one.
+Depending on the language, recursion can be avoided, but it is more of an avoid it if you can for general programming.
 
-Setjmp and longjmp make sense given the embedded environment and safety critical requirements.
-I haven't used them since I was never in an environment to use them.
-From my understanding it's like a super sized out of scope goto which just sounds like the complete opposite of a simple control flow.
-Supposedly they are useful for getting out of deep errors or useful for exception handling.
-However, because of rules 5 and 7 the exceptions should be caught before they occur.
-This isn't to say exception handling is bad, it's just that C has a different way of catching errors.
-Languages that have exception handling should use it.
-For the most part in normal programming these two methods don't need to be used at all.
-
+#### Goto
 Goto is a little weird.
 Goto isn't inherently evil as some think.
 A lot of the hatred is from a time where it was rampantly abused, and this hatred has been passed along.
 I've seen some valid uses for goto like jumping to handle clean up.
-Deep nested loops as well, but I think fixing the deep nesting would be better.
-Goto has this niche usage that can aid in readability, yet feels like an eyesore.
+Labeled breaks in Java are also an interesting case.
+Goto has this niche usage that can aid in readability, yet feels like a forced eyesore.
 It makes sense why it's banned for what it can bring, and its ban doesn't hurt anything.
+For general programming you very rarely will need something like goto.
+If you must use goto think about how the code and be refactored.
+
+#### Setjmp() LongJmp()
+Setjmp and longjmp make sense to ban given the embedded environment and safety critical requirements.
+Even the man page suggests they should be avoided as they make code much more difficult to read.
+Setjmp() saves the program state into env passed in for longjmp() to restore back to.
+It's basically a super sized out of scope goto without the label.
+I haven't used them since I was never in a position to use them.
+Supposedly they are useful for getting out of deep errors or for exception handling.
+However, rules 5 and 7 should catch the exceptions before they occur.
+Its usage can bring a few vulnerabilities.
+For example, the man page says automatic storage variables are unspecified under certain conditions after a longjmp().
+Automatic storage specifies block scope and is the default.
+This GeekForGeeks page explains storage classes (Storage Classes in C)[https://www.geeksforgeeks.org/storage-classes-in-c/].
+These two shall not be used in general programming.
 
 ### 2. Give all terminating loops a statically determinable upper-bound
 
@@ -87,15 +103,18 @@ The original wording says "all loops", but later specifies non-terminating loops
 NASA says there should only be one non-terminating loop per task or thread for receiving and processing.
 Loops like waiting for network requests or server loops.
 
-NASA mentions that adding an explicit upper bound to loops with a variable number of iterations is one way to enforce this rule.
-They give an example of a linked list.
-You might be asking about strings since their length is variable, but NASA says
+This is where the wording I felt was a little confusing in the original Power of 10 document.
+As mentioned, it says all loops should have a fixed upper bound, but lots of times you would take the length of something.
+Would you then need to have the length obtained as well as a fixed upper limit in case the length is wrong?
+Something like `for(int i = 0; i < (length of string) && i < (max upper bound); i++){. . .}`?
+I feel like if that was the intent of the wording validation of the length would be better.
+Luckily the JPL Coding Standard clarifies the rule by saying it shall be possible for a static analyzer to affirm a bound.
+This is to say if you can obtain the exact number of iterations as an integer it is okay.
+This would also apply to for-each loops too since it is implicit.
+NASA gives a more explicit quote here in the JPL Coding document.
 > "For standard for-loops the loop bound requirement can be satisfied by making sure that the loop's variables are not referenced or modified inside the body of the loop".
-This is to say if you can obtain the exact number of iterations as an integer that isn't changed inside the loop body it is okay.
-If you can find out what the number of iterations is, then you really don't need to set the upper limit you would validate if that number is within limit.
-This would also apply to for-each loops since there is known end.
 
-Linked List example
+In this linked list example a limit is added since there is no known ending.
 ```
 Node* listSearch(const Node* node, int needle){
     int count = 0;
@@ -109,7 +128,7 @@ Node* listSearch(const Node* node, int needle){
 }
 ```
 
-String examples
+String example obtaining a length
 ```
 char* charSearch(const char* string, char needle){
     int length = strlen(string)
@@ -122,7 +141,7 @@ char* charSearch(const char* string, char needle){
 
 ```
 
-Although a better implementation would be to provide a bound as a parameter
+Although a better implementation would be to provide a bound as a parameter.
 ```
 /* here size includes the NUL byte* /
 char* charSearch(const char* string, char needle, int size){
@@ -135,27 +154,54 @@ char* charSearch(const char* string, char needle, int size){
 
 ```
 
-Things are a little tricky with loops that are technically both or with files.
-Case 1 is a while loop that has a condition to exit, but could run on forever due to user intent.
-Like a program that only ends when a user says to or taking user input.
-Case 2 is reading from a file which could have any size, but isn't infinite.
-Files eventually do terminate even if you were given a gigantic file there is only as much storage on disk.
-Problem is you don't know when it'll end it could be any number of iterations.
-Unless you have special known criteria for files it should be fine to read until the end since it should terminate.
-Case 1 I believe would be set as an explicit non-terminating loop with some kind of break or exit condition.
-It would then be important to verify only that condition is able to break out.
+Lets say you want to find the length of the string.
+You may not have a terminating NUL byte which is your ending condition
+Here you can not get the length, so you would give a bound.
+I'll give a an error condition this time.
+```T
+int myStringLength(const char* string){
+    int count = 0;
+    while(string[count] != '\0'){
+        if(count > MAX_STRING_COUNT){
+            /*exit or return error*/
+            return -1
+        }
+        ++cTount;
+    }
+    return count;
+}
+```
+You could then use this to verify that you add a NUL byte to your strings at that length.
 
-Async functions should also get similar treatment.
+//still not happy with this
+#### Special Cases
+Things are a little tricky with loops that are technically both or parsing files.
+I couldn't find exact wording on how to handle these conditions, so I will give my educated guess.
+Case 1 is a while loop that blocks until it reaches a condition to exit.
+Like taking user input.
+Case 2 is reading from a file given by the user which could have any size.
+Even if you were given a gigantic file there is only as much storage on disk.
+
+As one of my professors would say it depends.
+A user can put as many wrong inputs as they want, but is it a login page or your app's menu?
+If it's a login then it makes sense to add a time out limit on too many incorrect attempts.
+An app menu not so much, but you can make the decision to add an upper bound on attempts.
+Files do have an implied ending to them.
+Unless you have special criteria for files it should be fine to read until the end without a max bound.
+
+#### Async
 I didn't see anything about asynchronous functions in NASA's documentation, but it is a common practice to set a timeout for asynchronous things.
 This way your program won't hang there waiting, and you can return an error.
-Regex should also have a timeout depending on the regex.
+
+#### Task Timeout
+Regex is one example.
 There are some "evil regex" patterns that can act as a Denial of Service.
 This Wikipedia article explains about it (Wikipedia ReDoS)[https://en.wikipedia.org/wiki/ReDoS]
 
 ### 3. Do not use dynamic memory after initialization
 
 I'm not entirely sure what they mean by "task initialization" in the JPL C Standard doc.
-It might be for threads assigned to do a task, or a method that does a task?
+It might be for threads assigned to do a task or a method that does a task?
 I think it's more than likely when the program finishes initialization.
 
 This rule can be hard to follow, but it has its reason.
@@ -164,7 +210,7 @@ You wouldn't want to deal with fragmentation and best fit algorithms in a system
 There is also an aspect of unpredictability in memory allocators that can affect performance.
 With all memory strictly on the stack, NASA can statically determine the upper bound on stack usage.
 
-The rule aims to completely avoid all the issues the come with using the HEAP like.
+The rule aims to completely avoid all the issues that come with using the HEAP like.
 
 ```
 use after free
@@ -190,7 +236,7 @@ also functions that internally use dynamic memory like.
 - strdup()
 - fopen()
 
-So how exactly would someone create dynamic behavior?
+So how exactly would someone imitate dynamic behavior?
 There are a couple of ways.
 1. Set some maximum bound
 2. Object pools
@@ -201,8 +247,8 @@ Now of course NASA's environment is different than most people.
 You could make that game without dynamic memory, but your team and boss may not like it.
 I can't say to everyone to avoid dynamic memory for all programs.
 I can say to keep explicit dynamic allocation to a minimum, but usage of printf or fopen is fine.
-This way you have as few mallocs to keep track of.
-Perhaps a stack array you pass to a functon with a specified bound parameter is better.
+This way you have as few mallocs to keep track of, and you have ease of use.
+Perhaps a stack array passed to a functon with a specified bound parameter is better.
 I don't believe dynamic memory is evil, but it can certainly be mismanaged easily.
 If you handle it properly that's good, but each extra allocation is a risk.
 
@@ -214,9 +260,10 @@ It incentivises breaking up work into tasks that are concise.
 This also means easier unit testing as you have now created concise units.
 I believe this rule does not apply to comments.
 The JPL Coding Standard and NASA power of 10 both say 60 lines of code.
-Tiger Beetle also uses this rule, but they have their limit at 70 lines.
+TigerBeetle uses this rule as well, but they have their limit at 70 lines.
 Another part of this rule is a maximum of 6 parameters.
 6 could be the magic number since the 7th and beyond are placed on the stack instead of a register.
+I think the more simple reason is for ease of use and simplicity.
 Personally for me having more than 4 parameters is too much
 
 NASA doesn't say anything about column limits in these documents, but excessively long lines can hurt readability.
@@ -252,7 +299,7 @@ This rule aims for more clarity.
 It avoids statements like `int* x,y,z` where only x is actually a pointer and the rest are ints.
 You would need to do `int* x, *y, *z` instead to make them all pointers.
 
-NASA makes a notable exception for for loops since they are technically 3 statements together.
+NASA makes a notable exception with for loops since they are technically 3 statements together.
 For loops are fine to keep in a single line.
 This then raises the question of what about boolean expressions in ifs and whiles?
 I think the preference is to maintain one line if possible since it is technically one large boolean statement.
