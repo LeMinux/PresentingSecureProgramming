@@ -21,10 +21,17 @@ Some rules apply to C-like languages while other rules are simply good practices
 So despite this one catch, I feel it is important to read NASA's power of 10 for the fact it alters your mind to be more defensive and considerate on how you program.
 
 Below is my commentary along with NASA's rationale.
-Due to the fact that these guidelines are not meant to explain every little detail I wanted to provide a little more detail.
-Commentary about why I think the rule is banned, some counter points, and what it means for a general programmer.
-I wanted to expand on NASA's reasoning to hopefully provide a better understanding for myself and others.
-Since the rules have a focus on C my expansion will naturally gravitate to C, but not always.
+Due to the fact that these are short safety critical guidelines it will of course not explain everything.
+This is why I wanted insert my own piece of thought to see how some other more specific scenarios would apply.
+I will take a stance that will focus more on how these rules can be applied in a general programming sense.
+This will of course mean a more relaxed stance on some rules for the sake of being more applicable, but it does not mean the rule can not be implemented.
+Taking a wider approach, although less restrictive in nature, does allow a conjuring on how these rules would apply to situations not explained in these guidelines.
+NASA has their reasons and I wanted to see how well their reasons would translate into a typical programmer.
+Of course their reasoning relates to C so naturally I will show C examples.
+Now there is the consideration that these documents are pretty old.
+NASA is probably using some other guideline that we don't know about.
+It probably takes principles from the Power of 10 and JPL Coding Standard, but I don't know exact details.
+
 I recommend that you read the sources to gain more incite into NASA's reasoning.
 For example, a lot relates to static analysis.
 The NASA power of 10 doc that most people see is a good document, but it is a little out of date.
@@ -38,15 +45,20 @@ Once again, I would heavily suggest you read the documents provided in sources.
 This rule in combination with 4 and 6 helps create clean code that's easy to audit for humans and tool-based analysis.
 Readable code is considerably easier to make secure and maintain.
 A simple control flow can reveal logic errors that otherwise could have remained hidden.
-Basically, the rule aims to make your control flow as explicit as possible.
-To help facilitate a simple control flow, NASA bans the usage of goto, setjmp, longjmp, and recursion.
+Basically, the rule aims to make control flow as explicit as possible especially for static analyzers.
+If a static analyzer is unable to understand the control flow NASA says to rewrite to code so that it is understandable.
+To accomplish this goal, NASA bans the usage of goto, setjmp, longjmp, and recursion.
 Additionally, NASA is perfectly okay with multiple exit points from a function.
 They say a single exit point can simplify control flow, but an early exit can often times be the more simple solution.
 Such cases would be validation of parameters or abiding by the fail fast principle.
 
 #### Break & Continue
-From what I saw, NASA did not say anything about break or continue statements.
-These two statements are strictly limited to loops, so they are not as devious as goto or setjmp/longjmp although poor usage can effectively be treated as a goto.
+From what I read, NASA did not say anything about break or continue statements.
+Now of course breaks are completely fine in switch cases it is more so its usage in loops that are of concern.
+MISRA C 2004 states a rule that bans continue and rescinded a rule banning break, but this was made in 2004.
+These two statements are strictly limited to loops, so they are not as devious as goto or setjmp/longjmp.
+They act as a shortcut to end the loop or start a new iteration, so their effect on flow are understood.
+Of course like any tool it can be abused to make unreadable code.
 This is especially true when they are used in nested conditionals in a single loop like so.
 ```
 #include <stdio.h>
@@ -78,42 +90,50 @@ Loop count is 7
 Loop count is 8
 Out of loop.
 ```
-It is pretty easy to forget that break applies to the entire loop, so deep breaks are problematic.
-Proper usage of break and continue is just fine though.
-One typical use case is leaving a loop early once a specific condition occurs.
-Such as finding a specific value in an array.
-Another example could be calling a function in a standard for loop that can return an error.
-It may not make sense to add this function call into the conditional or create a holding value for it to check the next iteration.
-Perhaps the more simple solution would be to break or return early.
-This is not to say that break and continue should be used every where, but to use it at the right moment.
+This is a silly example, but it's to show that deep breaks are problematic.
+However, proper usage can increase readability.
+Typical use case are leaving a loop early once a specific condition occurs, or loop and a half cases.
+Finding a specific value in an array, or calling a function in a standard for loop that can return an error.
+It may not make sense to add an extra variable into the conditionalor check for error each iteration.
+Sometimes they offer a more simple solution.
+It would not make much sense to completely ban their usage.
+If anything it would be an advisory rule against their usage unless it is for their niche role.
+TBut then again, that's basically just saying use them when they fit.
 Preferably your loops would be a simple enough to where they are not needed or only one of these statement would be needed.
 
 #### Recursion
 It is true that recursion can create small easily readable functions, but they do have a cost behind the scene.
-NASA avoids recursion as they must have certainty in stack bounds.
-They want to have an acyclic function call graph that proves execution falls within bounds.
+cNASA avoids recursion as they must have certainty in stack bounds.
+Iterative solutions have a bound that can be determined statically, but finding a bound to recursion statically is much more difficult.
+NASA want an acyclic function call graph that proves execution falls within bounds.
 What I like to call the "recursion tax" where each method call adds its parameters, return pointer, and frame to the stack can pass the bounds of the stack if the tax becomes too much.
 Your testing could show it is within bounds, but what happens during unexpected behavior?
 In this case all you really know is it will either reach the base case or blow out the stack.
 There are ways to make recursion safer such as limiting the number of calls or adding stack overflow checks.
 There is even tail recursion optimization which helps in reducing most stack overflows, but there still looms the threat of stack overflows.
+For saftey critical systems, recursion is too much of a risk compared to bounded iterative methods.
 With the absence of recursion, NASA can handle run away code in a much simpler manner specified in rule 2.
 The absence of recursion also keeps thread stacks with in bounds.
 Since threads reside within the same memory space it could be possible for an unchecked recursive method to clobber another thread stack.
-//ADD MORE HERE MAYBE?
 I do recognize the usage of recursion.
 Some problems may just be too complex for iterative implementations like trees or parsing a JSON.
 Depending on the language, recursion can be avoided, but it is more of an avoid it if you can for general programming.
 
 #### Goto
 Goto is a little weird.
-It is viewed with absolute hatred for what is has done in the past, but with other flow constructs replacing it's now like a cursed relic for those who dare to use it.
-This hatred is not unjustified, but there are some niche use cases.
-Two examples are jumping strictly down to a common error handling section, or jumping out of deep nested loops.
-Although for deep nesting I feel it would be better to fix the deep nesting.
-Even in these cases to aid in readability goto feels like a forced eyesore.
-It makes sense why it is banned for what it can bring, and its ban does not hurt anything.
-For general programming you very rarely will need something like goto, and honestly it should be avoided to prevent arguments.
+It is viewed as a monster of the past for those who lived it and a cursed relic for those who haven't.
+There was good reason for the hatred, and with structured programming becoming the new thing goto was exhiled.
+Now that some time has past, with structured programming and OOP as the standard, goto kind of... just exists.
+Although I suppose Linux kernel devs could argue some points with their do-while goto loops.
+Now adays goto has this one very special specific use case to jump to error handling.
+MEM12-C explains how this could be used (MEM12-C)[https://wiki.sei.cmu.edu/confluence/display/c/MEM12-C.+Consider+using+a+goto+chain+when+leaving+a+function+on+error+when+using+and+releasing+resources]
+This is touted as the best use case for goto in trying to increase readability.
+It is of course still possible to avoid goto for a more structured approach, but this can be less readable.
+If we want to abide by the rule of what would be more simple, there could be an argument to use goto specifically for this.
+It could also be argued that goto is not needed and to stick to standard flow to avoid bringing issues related to goto.
+Without an official statement I would assume NASA still completely bans goto.
+For general programming I would advise against using goto.
+It is not needed 99% of the time, but it could be useful that incrediably rare 1%.
 
 #### Setjmp() LongJmp()
 Setjmp() and longjmp() make sense to ban given the embedded environment and safety critical requirements.
@@ -821,6 +841,7 @@ Depending on the language, there may be third party static analyzers to add addi
 This wikipedia article shows some static code analyzers available (Wikipedia list of static code analysis)[https://en.wikipedia.org/wiki/List_of_tools_for_static_code_analysis]
 
 ## Conclusion
+//Just write something down to get an idea
 So those are the rules.
 In a broad sense these rules can be summarized into three catagories.
 Those are predictable execution, defensive coding, and code clarity.
@@ -836,7 +857,7 @@ Depends on the language
 
 Rules 2 and 3 are in the predictable execution catagory.
 Rules 5, 6, 7, and 10 relate to defensive coding
-Rules 1, 4, 8, 9, 
+Rules 1, 4, 8, 9
 
 ## Sources
 
