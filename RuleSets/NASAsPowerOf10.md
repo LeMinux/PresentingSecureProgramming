@@ -97,27 +97,25 @@ Finding a specific value in an array, or calling a function in a standard for lo
 It may not make sense to add an extra variable into the conditionalor check for error each iteration.
 Sometimes they offer a more simple solution.
 It would not make much sense to completely ban their usage.
-If anything it would be an advisory rule against their usage unless it is for their niche role.
-TBut then again, that's basically just saying use them when they fit.
+If anything it would be an advisory rule against their usage unless it is foTBut then again, that's basically just saying use them when they fit.
 Preferably your loops would be a simple enough to where they are not needed or only one of these statement would be needed.
 
 #### Recursion
-It is true that recursion can create small easily readable functions, but they do have a cost behind the scene.
-cNASA avoids recursion as they must have certainty in stack bounds.
-Iterative solutions have a bound that can be determined statically, but finding a bound to recursion statically is much more difficult.
-NASA want an acyclic function call graph that proves execution falls within bounds.
-What I like to call the "recursion tax" where each method call adds its parameters, return pointer, and frame to the stack can pass the bounds of the stack if the tax becomes too much.
+It is true that recursion can create small easily readable functions, but their hidden cost is too much of a risk for saftey critical systems.
+What I like to call the recursion tax, where each method call adds its parameters, return pointer, and frame to the stack, can pass the bounds of the stack if the tax becomes too much.
 Your testing could show it is within bounds, but what happens during unexpected behavior?
 In this case all you really know is it will either reach the base case or blow out the stack.
 There are ways to make recursion safer such as limiting the number of calls or adding stack overflow checks.
-There is even tail recursion optimization which helps in reducing most stack overflows, but there still looms the threat of stack overflows.
-For saftey critical systems, recursion is too much of a risk compared to bounded iterative methods.
-With the absence of recursion, NASA can handle run away code in a much simpler manner specified in rule 2.
+There is even tail recursion optimization which helps in reducing most stack overflows, but it does not get rid of it entirely.
+In the eyes of safety there is no need to introduce such risk if any recursive implementation can be done iteratively.
+This way bounds can be verified by static analyzers analyizing an acyclic function call graph, and the common worry of run away code is handled by rule 2.
 The absence of recursion also keeps thread stacks with in bounds.
 Since threads reside within the same memory space it could be possible for an unchecked recursive method to clobber another thread stack.
-I do recognize the usage of recursion.
+Now of course just because you avoid recursion does not make you immune to stack overflows.
+Creating excessively large stack frames can still stack overflow, but it is easier to catch with static analysis.
+I do recognize the usage of recursion for general applications.
 Some problems may just be too complex for iterative implementations like trees or parsing a JSON.
-Depending on the language, recursion can be avoided, but it is more of an avoid it if you can for general programming.
+Unless you are using a purely functional language, recursion can be avoided, but it is more of an avoid it if you can for general programming.
 
 #### Goto
 Goto is a little weird.
@@ -151,31 +149,30 @@ For general programming there is not a reason to use these two.
 
 ### 2. Give all terminating loops a statically determinable upper-bound
 
-I added the distinction to specify terminating loops.
-The original Power of 10 document says "all loops", but later specifies non-terminating loops are exempt.
-NASA says there should only be one non-terminating loop per task or thread for receiving and processing.
-Loops like server loops or process schedulers, so an explicit while(true) loop with no exiting.
+I added the distinction to specify terminating loops since explicit non-terminating loops are exempt from this rule.
+Such non-terminating loops would be a server loop or a process scheduler.
+Of which NASA says there should only be one per task or thread for receiving and processing.
 
 This is where the wording I felt was a little confusing in the original Power of 10 document.
-As mentioned, it says all loops should have a "fixed upper bound", but often times you would take the length of something.
-Would you then need to have the length obtained as well as a fixed upper limit in case the length is wrong?
-Something like `for(int i = 0; i < (length of string) && i < (max upper bound); i++){. . .}`?
+It says all loops should have a "fixed upper bound".
+I suppose this would ideally mean that all array structures would have a defined max bound.
+In most general cases though the length would be found with some method or variable.
+Since this length obtained is not fixed would you then need to provide a fixed bound as well?
+Something like `for(int i = 0; i < (length of array) && i < (max upper bound); i++){. . .}`?
 I feel like if that was the intent validation would be better like in rule 7.
 Luckily the JPL Coding Standard clarifies the rule by saying it shall be possible for a static analyzer to affirm a bound.
 This is to say if you can obtain the exact number of iterations as an integer it is okay.
-Some languages prefer a for-each loop style which is fine as long as the length can be known.
+Some languages prefer a for-each loop style which is fine as long as the length can be known and does not change.
 NASA gives a more explicit quote here in the JPL Coding document.
 > "For standard for-loops the loop bound requirement can be satisfied by making sure that the loop's variables are not referenced or modified inside the body of the loop".
 
-//TEST THESE METHODS JUST IN CASE
-//COME BACK TO THESE THE CONST IS MESSING UP STUFF
 In this linked list example a limit is added since a pointer is not an exact ending.
 ```
-Node* listSearch(const Node* node, int needle){
+Node* listSearch(Node* node, int needle){
     int count = 0;
     while(node != NULL && count++ < MAX_ITERATIONS){
         if(node->value == needle)
-            return (Node*)(node);
+            return node;
 
         node = node->next;
     }
@@ -185,11 +182,11 @@ Node* listSearch(const Node* node, int needle){
 
 String example finding a character.
 ```
-char* charSearch(const char* string, char needle){
+char* charSearch(char* string, char needle){
     int length = strlen(string)
     for(int i = 0; i <= length; ++i){
         if(string[i] == needle)
-            return (char*)(string + i);
+            return string + i;
     }
     return NULL;
 }
@@ -199,10 +196,10 @@ char* charSearch(const char* string, char needle){
 Although a better implementation would be to provide a bound as a parameter.
 ```
 /* here size includes the NUL byte */
-char* charSearch(const char* string, char needle, int size){
+char* charSearch(char* string, char needle, size_t size){
     for(int i = 0; i < size - 1; ++i){
         if(string[i] == needle)
-            return (char*)(string + i);
+            return string + i;
     }
     return NULL;
 }
@@ -216,39 +213,43 @@ int myStringLength(const char* string){
     int count = 0;
     while(string[count] != '\0'){
         ++count;
-        if(count > MAX_STRING_SIZE){
+        if(count > MAX_STRING_LENGTH){
             /*exit or return error*/
         }
     }
     return count;
 }
 ```
-You could then use this to verify that you add a NUL byte to your strings.
+You could then use this to verify that your strings are of a certain length.
 
-#### Special Cases
-Things are a little tricky with loops that are technically terminating but can be non-terminating or parsing files.
-For the non-terminating but actually terminating loop this rule would say to add an explicit upper bound.
-In these cases it would depend on if adding a limit makes sense.
-A user can put as many wrong inputs as they want, but is it a login page or your app's menu?
+#### General Cases
+Applying this rule to a more general environment is a little more tricky.
+This rule is pretty easy to apply when traversing a structure where you have set bounds, but this is not always true.
+Cases where the condition to terminate is outside your control, but your desire is to get out that loop are a bit tricky.
+Such cases such as
+- A user can input as many wrong inputs as they want.
+- A process can wait for an event for as long as it needs.
+- Waiting for the return value of some long running method.
+- Retrying a failed task.
+Through the scientific power of picking a number that feels right, a limit can be placed on everything
+The question would be if it makes sense to for general programming.
+A user can put as many wrong inputs as they want, but is it a login page or your terminal app menu?
 If it is a login then it makes sense to add a time out on too many incorrect attempts.
-An app menu not so much, but you can make the decision to add an upper bound on attempts.
+A terminal menu not so much, but a decision can be made to add an upper bound on attempts.
 Maybe the program is reading from a socket that keeps giving bad data.
 Perhaps it's okay to block until good data, but if the context is time sensitive you would return an error after x attempts.
-Either case it would have to be verified that only the specified condition can terminate the loop.
+Either way it would have to be verified that only the specified condition can terminate the loop.
 The same would go for files since you also don't know the exact end.
 Even if you were given a gigantic file there is only as much storage on disk.
 If a program depends on reading the whole file there wouldn't be a reason to add a bound.
 Unless you have special criteria for files it should be fine to read until the end without a max bound.
-A case where a limit could be necessary is to verify that a log file is only a certain amount of bytes.
-//REWORD A LITTLE
-The big consideration here is that normal programming allows for the program to eventually exit.
-NASA wants to avoid such conditions which is why they want to ensure their non-terminating loops do not exit.
+//something about file sizes changing?
+
 
 #### Async
 I didn't see anything about asynchronous behavior in NASA's documentation, but it is a common practice to set a timeout for asynchronous things.
 This way your program won't hang there waiting, and you can return an error.
-Some special cases could fall under here.
-These types of actions my not explicity be a loop, but in behavior it's like the non-terminating but terminating loop.
+These types of actions in behavior are like the non-terminating but terminating loop.
 
 #### Task Timeout
 Task timeouts are more applicable to servers to prevent DDos attacks, but can very well be used in other situations.
@@ -263,6 +264,7 @@ This rule only permits dynamic memory at the initialization phase of the program
 Basically memory that you allocate all at once and then never free.
 Most people take this as a rule to never use dynamic allocation at all which is partly correct.
 It is forbidden to use dynamic memory at run time, but at initialization it is used to set a bound.
+This is because you can't assume the HEAP contains infinite memory, and 
 An example could be parsing a config file that determines how much memory would be needed.
 By avAoiding dynamic memory at run time it avoids
 ```
@@ -336,6 +338,7 @@ Combined in this rule is having statements and declarations on separate lines.
 ```
 int obtain_value = getValue(), obtain_value2 = getAnotherValue();
 char* first = some_string, second = some_string + 1;
+int i, j = 1;
 ```
 
 should be
@@ -345,15 +348,16 @@ int obtain_value = getValue();
 int obtain_value2 = getAnotherValue();
 char* first = some_string;
 char* second = some_string + 1;
+int i = 1;
+int j = 1;
 ```
 
 one line if statements would be like
-
+I didn't include curly brackets as what ever coding style is chosen would determine it.
 ```
 if( x < 5 )
     flag = 1
 ```
-I didn't include curly brackets as what ever coding style is chosen would determine it.
 
 Separating each movement of the code into lines provides more clarity.
 It avoids statements like `int* x,y,z` where only x is actually a pointer and the rest are ints.
