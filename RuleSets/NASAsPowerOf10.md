@@ -20,9 +20,10 @@ In the general case these should be treated as guidance rather than strict adher
 Some rules apply to C-like languages while other rules are simply good practices to have for any language.
 So despite this one catch, I feel it is important to read NASA's power of 10 for the fact it alters your mind to be more defensive and considerate on how you program.
 
-Below is my commentary along with NASA's rationale.
-Due to the fact that these are short safety critical guidelines it will of course not explain everything.
-This is why I wanted insert my own piece of thought to see how some other more specific scenarios would apply.
+//MENTION EMBEDDED SYSTEMS
+Below is my commentary along with NASA's word.
+Due to the fact that these are short, safety critical guidelines it will of course not explain everything.
+This is why I wanted insert my own piece of thought to explain further what these rules mean.
 I will take a stance that will focus more on how these rules can be applied in a general programming sense.
 This will of course mean a more relaxed stance on some rules for the sake of being more applicable, but it does not mean the rule can not be implemented.
 Taking a wider approach, although less restrictive in nature, does allow a conjuring on how these rules would apply to situations not explained in these guidelines.
@@ -33,6 +34,7 @@ NASA is probably using some other guideline that we don't know about.
 It probably takes principles from the Power of 10 and JPL Coding Standard, but I don't know exact details.
 
 I recommend that you read the sources to gain more incite into NASA's reasoning.
+Especially so if you want to read their rationale which I have purposely avoided so you would go read :P.
 For example, a lot relates to static analysis.
 The NASA power of 10 doc that most people see is a good document, but it is a little out of date.
 The JPL C Coding Standard comes after the Power of 10 document and refines some of the original rules.
@@ -105,6 +107,7 @@ Preferably your loops would be a simple enough to where they are not needed or o
 
 It is true that recursion can create small easily readable functions, but their hidden cost is too much of a risk for saftey critical systems.
 What I like to call the recursion tax, where each method call adds its parameters, return pointer, and frame to the stack, can pass the bounds of the stack if the tax becomes too much.
+(As a side the calling convention of an architecture would determine if a parameter is added to the stack or a register)
 Your testing could show it is within bounds, but what happens during unexpected behavior?
 In this case all you really know is it will either reach the base case or blow out the stack.
 There are ways to make recursion safer such as limiting the number of calls or adding stack overflow checks.
@@ -152,6 +155,7 @@ Automatic storage being block scoped variables.
 For general programming there is not a reason to use these two.
 
 ### 2. Give all terminating loops a statically determinable upper-bound
+//MENTION ABOUF FILE SIZES
 
 I added the distinction to specify terminating loops since explicit non-terminating loops are exempt from this rule.
 Such non-terminating loops would be like a server loop, a process scheduler, or anything for receiving and processing.
@@ -288,6 +292,15 @@ This can result in a crash from using memory thought to be available.
 For these reasons dynamic memory is banned, but it is not banned entirely.
 Most people take this as a rule to never use dynamic allocation which is not entirely true.
 It forbids using dynamic memory at run time, but it can be used at the initialization phase to set a bound.
+This would be the phase either before the call to main, or in main but calls to other functions to set things up.
+Here the program can figure out how much memory it would need in total and make it.
+This is what the NASA Power of 10 Document says at least.
+In the JPL document it mentions "task initalization" which I am not entirely sure on what it means.
+Is this talking about the creation of threads or a method setting up memory before doing its job or any broad definition of a task?
+My hunch is that it is talking about threads as they are commonly refered to as tasks, and their job is to complete a task.
+Would this definition allow the usage of the HEAP during the run time to initialize a task, or would the this need to be accounted for in the very first allocation?
+Is this what allows funtions like printf to be used?
+
 In NASA's words they force the application to live in a fixed, pre-allocated area of memory.
 Essentially they avoid the issue with the HEAP by making a single large allocation and then never freeing it.
 
@@ -300,6 +313,7 @@ During run time it means avoiding functions like
 - sbrk()
 
 \*alloca uses the stack, but still should not be used. The man page explains (alloca() man page)[https://www.man7.org/linux/man-pages/man3/alloca.3.html].
+//INCLUDE SOMETHING ABOUT VARIATIC ARRAY LENGTH DECLARING
 
 This would also mean some functions that return dynamic memory like strdup().
 What I'm not entirely sure about are standard library functions that internally use dynamic memory.
@@ -323,32 +337,46 @@ Each extra allocation is another risk so handle it properly.
 
 ### 4. Function Length should be printable on a page with one statement per line
 
-RIP all the Java and C++ users :P.
-This rule basically says to keep your functions small and concise for easier auditing.
-It incentivises breaking up work into tasks.
-This may mean easier but perhaps more unit testing.
-I believe this rule does not apply to comments.
-The JPL Coding Standard and NASA power of 10 both say 60 lines of code.
-TigerBeetle uses this rule as well, but they have their limit at 70 lines.
-Another part of this rule is a maximum of 6 parameters.
-6 could be the magic number since the 7th and beyond are placed on the stack instead of a register.
-I think the more simple reason is for ease of use and simplicity.
-Personally for me, having more than 4 parameters is too much.
-NASA does not say anything about column limits in these documents, but excessively long lines can hurt readability.
-80 character column limit seems to be more preferred, even I try to stick by it, but it is my soft limit.
-100 characters is my hard limit.
+The principle of this rule is to treat your functions as small logical units.
+Longer "everything" functions are often a sign that logic is poorly thought out, or that stratification is needed.
+Not only is it harder to debug a large function because of its size, but it also much slower to understand in the first place.
+Having to scroll down or jjjjjjjj/kkkkk to find far seaparated code can feel like walking into many rooms and forgetting why you are there in the first place.
+So you jump back to where you had a foot hold of understanding because "ahh it was that variable I am concerned about".
+Then you scroll too far down trying to find where you are stuck.
+Creating smaller functions keeps the logic within one spot, so it is much easier to audit and find mistakes.
+In combination with rule 1, functions are even more understandable with clear flow.
 
-Combined in this rule is having statements and declarations on separate lines.
+#### UnitTesting
+The rule would have a tie with unit testing.
+Since functions are broken up into units it makes logical sense to test those units.
+With the units being smaller it helps keep tests small, but allows for much more through testing.
+It would be less likely to forget a test case if the unit has a strict job rather than many jobs combined.
+It would also mean less need for hacky mocking to prevent execution from going further.
 
+#### Interpretation
+The exact interpretation of this rule can vary.
+NASA's Power of 10 says 60 lines of code, but generally what can be printed on a single page in standard reference format.
+The JPL Coding Standard says 60 lines of text, but includes 60 lines of code from the Power of 10.
+TigerBeetle uses a hard limit of 70 lines.
+The Spinroot site says 60 is typical, but an reasonable value between 50 - 100 works.
+Spinroot's interpretation of what a line is is defined by actual code excluding comments and empty lines.
+They take the file and normalize to count each line.
+
+##### All the Single Lines
+What every interpretation had in common though, was that each statement and declaration should be on separate lines.
+This is to avoid cheating the rule with statements like `unsigned int i, n, h, w, x, y, mw;` or `int i, j = 1`.
+It avoids statements like `int* x,y,z` where only x is actually a pointer and the rest are ints.
+You would need to do `int* x, *y, *z` instead to make them all pointers.
+Statements that can create confusion at first glace like `int i, j = 1` are also avoided.
+Here both i and j are assigned one, but at first glance be seen as i assinged a default value and j as 1.
+Some more examples I will provide below.
 ```
+/* not abiding by rule */
 int obtain_value = getValue(), obtain_value2 = getAnotherValue();
 char* first = some_string, second = some_string + 1;
 int i, j = 1;
-```
 
-should be
-
-```
+/* abiding by rule */
 int obtain_value = getValue();
 int obtain_value2 = getAnotherValue();
 char* first = some_string;
@@ -357,6 +385,37 @@ int i = 1;
 int j = 1;
 ```
 
+#### For Loops
+There is a notable exception to for loops since they are technically 3 statements.
+The three statements in a for loop are just fine to keep in a single line since it is convention.
+An unfortunate edge case can be seen in the glibc strlen() source code.
+```
+for (char_ptr = str; ((unsigned long int) char_ptr
+			& (sizeof (longword) - 1)) != 0;
+       ++char_ptr)
+    if (*char_ptr == '\0')
+      return char_ptr - str;
+```
+
+This is difficult to read mostly because the conditional is split and the incremenation is dangling there.
+Now I understand that the casting is pushing this to be a very long line.
+Excluding indentation, it would span 95 columns and the hard limit could be 80.
+```
+ for (char_ptr = str; ((unsigned long int) char_ptr & (sizeof (longword) - 1)) != 0; ++char_ptr)
+    if (*char_ptr == '\0')
+      return char_ptr - str;
+```
+
+I won't go over fixes.
+Just know that edge cases like these can exist.
+
+#### Ifs and Whiles
+The mention about for-loops got me a little curious on what this meant for ifs and whiles.
+The conditional statement is separated by && and || (or even bitwise & |) instead of semicolons.
+Sometimes these boolean expressions can get a little long, so what does this rule mean for them?
+I think the preference is to maintain a single line if possible, or even better just have a simple boolean expression.
+This is not always possible, so to aid readability separation is acceptable.
+
 one line if statements would be like
 I didn't include curly brackets as what ever coding style is chosen would determine it.
 ```
@@ -364,18 +423,17 @@ if( x < 5 )
     flag = 1
 ```
 
-Separating each movement of the code into lines provides more clarity.
-It avoids statements like `int* x,y,z` where only x is actually a pointer and the rest are ints.
-You would need to do `int* x, *y, *z` instead to make them all pointers.
-There is a notable exception to for loops since they are technically 3 statements.
-For loops should stay on a single line.
-This brought me to thinking about boolean expressions in ifs and whiles.
-I think the preference is to maintain one line if and whiles since it is technically one large boolean statement.
-Although, sometimes the expressions can get a little long, so splitting into multiple lines can aid readability.
+#### Function Parameters
+Another part of this rule is a prefered maximum of 6 parameters.
+Having too many parameters can harm clarity not just for the function itself, but for the callee.
+Personally for me, having more than 4 parameters is too much.
+There is also a more technical reason that the 7th and beyond parameters are placed on the stack instead of a register, so their values could get courrupted indirectly.
+This is more of a side reason though, and the main reason is for improved clarity.
 
-If you have trouble with trying to condense functions, TigerBeetle suggests to keep your branching, but the contents of the branch can be added into its own method.
-Also look for any repetition to turn into a function.
-The benefit of adding them to methods also allows to you to follow rule 7 even more.
+#### Column Limits
+NASA does not say anything about column limits in these documents, but excessively long lines can hurt readability.
+80 seems to be more preferred, but it tends to more of a soft limit for most people.
+100 characters seems to be the more acceptable hard limit, and it is what I stick by.
 
 ### 5. There shall be minimally an average of 2 assertions per function with assertions containing no side-effects and must be boolean
 
@@ -410,6 +468,8 @@ Where do you **NOT** use assertions?
 In these cases you should **VALIDATE** instead like in rule 7.
 Do not use assertions on user provided data.
 This is because assertions are removable for performance reasons.
+An argument can be made if assertions should be removed in the first place since debugging never stops in programming.
+It is more so if performance is of absolute importance.
 If you want to modify the behavior of the default assertions, or don't want them to be removable you can create your own.
 Programs that run infinitely probably don't want to exit the program on assertion failure (especially if your machine is out in space).
 Instead you would want to log it.
@@ -550,6 +610,7 @@ MISRA C 2004 rule 20.3 mentions some ways of conducting validation
 - Demonstrate statically that the input parameters can never take invalid values.
 
 ### 8. The preprocessor should be left for simple tasks like includes, simple macros, and header guards
+//TALK ABOUT NOT REDEFINING LANGAUEE
 
 The preprocessor can make debugging more difficult since it obfuscates the actual value.
 This can make it difficult for tools to verify the code, and for humans to read.
@@ -875,6 +936,8 @@ Rules 1, 4, 8, 9
 [Other NASA's Power of 10](https://web.eecs.umich.edu/~imarkov/10rules.pdf)
 
 [JPL C Coding Standards](https://github.com/stanislaw/awesome-safety-critical/blob/master/Backup/JPL_Coding_Standard_C.pdf)
+
+[Spinroot Power of 10 Explanations](https://spinroot.com/p10/index.html)
 
 [MISRA C 2004](https://caxapa.ru/thumbs/468328/misra-c-2004.pdf)
 
