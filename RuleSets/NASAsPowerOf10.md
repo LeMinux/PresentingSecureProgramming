@@ -53,6 +53,7 @@ They say a single exit point can simplify control flow, but an early exit can of
 Such cases would be validation of parameters or abiding by the fail fast principle.
 
 #### Break & Continue
+
 From what I read, NASA did not say anything about break or continue statements.
 Now of course breaks are completely fine in switch cases it is more so its usage in loops that are of concern.
 MISRA C 2004 states a rule that bans continue and rescinded a rule banning break, but this was made in 2004.
@@ -101,6 +102,7 @@ If anything it would be an advisory rule against their usage unless it is foTBut
 Preferably your loops would be a simple enough to where they are not needed or only one of these statement would be needed.
 
 #### Recursion
+
 It is true that recursion can create small easily readable functions, but their hidden cost is too much of a risk for saftey critical systems.
 What I like to call the recursion tax, where each method call adds its parameters, return pointer, and frame to the stack, can pass the bounds of the stack if the tax becomes too much.
 Your testing could show it is within bounds, but what happens during unexpected behavior?
@@ -118,6 +120,7 @@ Some problems may just be too complex for iterative implementations like trees o
 Unless you are using a purely functional language, recursion can be avoided, but it is more of an avoid it if you can for general programming.
 
 #### Goto
+
 Goto is a little weird.
 It is viewed as a monster of the past for those who lived it and a cursed relic for those who haven't.
 There was good reason for the hatred, and with structured programming becoming the new thing goto was exhiled.
@@ -134,6 +137,7 @@ For general programming I would advise against using goto.
 It is not needed 99% of the time, but it could be useful that incrediably rare 1%.
 
 #### Setjmp() LongJmp()
+
 Setjmp() and longjmp() make sense to ban given the embedded environment and safety critical requirements.
 Even the man page suggests avoiding using these two as they make code much more difficult to read.
 If you do not know what these two methods do, setjmp() saves the program state into a passed in env for longjmp() to restore back to.
@@ -150,23 +154,24 @@ For general programming there is not a reason to use these two.
 ### 2. Give all terminating loops a statically determinable upper-bound
 
 I added the distinction to specify terminating loops since explicit non-terminating loops are exempt from this rule.
-Such non-terminating loops would be a server loop or a process scheduler.
-Of which NASA says there should only be one per task or thread for receiving and processing.
+Such non-terminating loops would be like a server loop, a process scheduler, or anything for receiving and processing.
+Of which NASA says there should only be one non-terminating loop per task or thread.
 
-This is where the wording I felt was a little confusing in the original Power of 10 document.
-It says all loops should have a "fixed upper bound".
-I suppose this would ideally mean that all array structures would have a defined max bound.
-In most general cases though the length would be found with some method or variable.
-Since this length obtained is not fixed would you then need to provide a fixed bound as well?
+The original wording from Power of 10 wording specifies "all loops must have a fixed upper-bound".
+When I first read this rule I was initially perplexed about what it meant for implementation.
+Did this mean NASA just never used functions like strlen or pass in size arguments?
+Did this just mean to strictly use constant variables to sent bounds for array like structures?
+What would you do if you needed to use a length function or length parameter?
+Since the length obtained is not fixed would you then need to provide a fixed bound as well?
 Something like `for(int i = 0; i < (length of array) && i < (max upper bound); i++){. . .}`?
-I feel like if that was the intent validation would be better like in rule 7.
+This seems unecessary though as would rule 5 and rule 7 check for this?
 Luckily the JPL Coding Standard clarifies the rule by saying it shall be possible for a static analyzer to affirm a bound.
 This is to say if you can obtain the exact number of iterations as an integer it is okay.
-Some languages prefer a for-each loop style which is fine as long as the length can be known and does not change.
-NASA gives a more explicit quote here in the JPL Coding document.
+NASA then points out
 > "For standard for-loops the loop bound requirement can be satisfied by making sure that the loop's variables are not referenced or modified inside the body of the loop".
+Some languages prefer a for-each loop style which is fine as long as the length can be known and does not change.
 
-In this linked list example a limit is added since a pointer is not an exact ending.
+In this linked list example a limit is added since finding NULL does not give exact iterations.
 ```
 Node* listSearch(Node* node, int needle){
     int count = 0;
@@ -197,7 +202,7 @@ Although a better implementation would be to provide a bound as a parameter.
 ```
 /* here size includes the NUL byte */
 char* charSearch(char* string, char needle, size_t size){
-    for(int i = 0; i < size - 1; ++i){
+    for(size_t i = 0; i < size - 1; ++i){
         if(string[i] == needle)
             return string + i;
     }
@@ -207,7 +212,7 @@ char* charSearch(char* string, char needle, size_t size){
 ```
 
 Now, lets say you want to find the length of the string.
-You may not have a terminating NUL byte which is your ending condition.
+It's similar to the linked list example in where searching for a NUL byte does not give exact iterations.
 ```
 int myStringLength(const char* string){
     int count = 0;
@@ -223,35 +228,39 @@ int myStringLength(const char* string){
 You could then use this to verify that your strings are of a certain length.
 
 #### General Cases
+
 Applying this rule to a more general environment is a little more tricky.
-This rule is pretty easy to apply when traversing a structure where you have set bounds, but this is not always true.
-Cases where the condition to terminate is outside your control, but your desire is to get out that loop are a bit tricky.
-Such cases such as
-- A user can input as many wrong inputs as they want.
-- A process can wait for an event for as long as it needs.
-- Waiting for the return value of some long running method.
+This rule is pretty easy to apply when traversing a structure where you can find bounds, but this is not always the case.
+Cases where the condition to terminate is outside your control, but your desire is to get out that loop come to mind.
+Cases such as
+- user input
+- waiting for an event
+- Waiting for the return value.
 - Retrying a failed task.
-Through the scientific power of picking a number that feels right, a limit can be placed on everything
-The question would be if it makes sense to for general programming.
+Technically a bound can be placed on everything through the scientific power of picking a number.
+The question would be if it makes sense to.
 A user can put as many wrong inputs as they want, but is it a login page or your terminal app menu?
 If it is a login then it makes sense to add a time out on too many incorrect attempts.
 A terminal menu not so much, but a decision can be made to add an upper bound on attempts.
 Maybe the program is reading from a socket that keeps giving bad data.
-Perhaps it's okay to block until good data, but if the context is time sensitive you would return an error after x attempts.
-Either way it would have to be verified that only the specified condition can terminate the loop.
-The same would go for files since you also don't know the exact end.
+Perhaps it's okay to block until good data, but if the context is time sensitive returning an error after x attempts would make sense.
+Either way it would have to be verified that only the specified conditions can terminate the loop.
+The same would go for files, but their sizes can be determined.
 Even if you were given a gigantic file there is only as much storage on disk.
-If a program depends on reading the whole file there wouldn't be a reason to add a bound.
-Unless you have special criteria for files it should be fine to read until the end without a max bound.
-//something about file sizes changing?
+Adding a limit would depend on what you are using the file for.
+If a program depends on reading the whole file there would not be a reason to add a bound.
+Maybe it is expected that a file is only ever a certain size, so the program never reads past an amount of bytes.
+Generally it would depend.
+It may make sense to add a bound it may not make sense.
 
 
 #### Async
+
 I didn't see anything about asynchronous behavior in NASA's documentation, but it is a common practice to set a timeout for asynchronous things.
 This way your program won't hang there waiting, and you can return an error.
-These types of actions in behavior are like the non-terminating but terminating loop.
 
 #### Task Timeout
+
 Task timeouts are more applicable to servers to prevent DDos attacks, but can very well be used in other situations.
 Regex is one example.
 There are some "evil regex" patterns that can act as a Denial of Service.
@@ -259,30 +268,30 @@ This Wikipedia article explains about it (Wikipedia ReDoS)[https://en.wikipedia.
 
 ### 3. Do not use dynamic memory after initialization
 
-This is a common rule for anything safety critical or in embedded systems.
-This rule only permits dynamic memory at the initialization phase of the program.
-Basically memory that you allocate all at once and then never free.
-Most people take this as a rule to never use dynamic allocation at all which is partly correct.
-It is forbidden to use dynamic memory at run time, but at initialization it is used to set a bound.
-This is because you can't assume the HEAP contains infinite memory, and 
-An example could be parsing a config file that determines how much memory would be needed.
-By avAoiding dynamic memory at run time it avoids
-```
-use after free
-memory leaks
-fragmentation
-dangling pointers
-exhausting HEAP memory
-buffer overflows in the HEAP
-missing real time deadlines due to waiting for memory
-unpredictable behavior of garbage collectors
-unpredictable behavior of memory allocators
-```
-Essentially this is avoiding all the issues with the HEAP by just not freeing anything or adding anything new.
-This then gives a bound that can be checked.
+This is a common rule for embedded systems and anything safety critical.
+Dynamic memory can be unpredictable, hard to manage, and hurt performance.
+There are also countless issues related to the HEAP such as
+- use after free
+- memory leaks
+- fragmentation
+- dangling pointers
+- exhausting HEAP memory
+- buffer overflows in the HEAP
+- missing real time deadlines due to waiting for memory
+- sensitive data left in HEAP
+- unpredictable behavior of garbage collectors
+- unpredictable behavior of memory allocators
 
+Even NULL checks after a malloc does not gaurentee that the malloc was successful.
+Linux's malloc() is optimistic and only allocates the memory once it is going to be used.
+This can result in a crash from using memory thought to be available.
+For these reasons dynamic memory is banned, but it is not banned entirely.
+Most people take this as a rule to never use dynamic allocation which is not entirely true.
+It forbids using dynamic memory at run time, but it can be used at the initialization phase to set a bound.
+In NASA's words they force the application to live in a fixed, pre-allocated area of memory.
+Essentially they avoid the issue with the HEAP by making a single large allocation and then never freeing it.
 
-This means avoiding functions like
+During run time it means avoiding functions like
 - malloc()
 - calloc()
 - realloc()
@@ -292,7 +301,6 @@ This means avoiding functions like
 
 \*alloca uses the stack, but still should not be used. The man page explains (alloca() man page)[https://www.man7.org/linux/man-pages/man3/alloca.3.html].
 
-//FIND OUT ABOUT INTERNAL DYNAMIC MEMORY 
 This would also mean some functions that return dynamic memory like strdup().
 What I'm not entirely sure about are standard library functions that internally use dynamic memory.
 The printf family is one example.
@@ -300,21 +308,18 @@ Printf uses xmalloc which would abort the program on allocation failure.
 I suppose this could be used as a safety check and ensure boundaries are not past?
 They do include printf in rule 7, so I assume this is more a ban on explicit usage of dynamic memory.
 
-So how exactly would someone imitate dynamic behavior?
-There are a couple of ways.
+Some ways to imitate dynamic behavior
 1. Set maximum bounds for input
 2. Object pools
 3. Ring buffers
 4. Arenas
 5. Pre-allocate
 
-Now of course NASA's environment is different than most people.
-I can't say to avoid dynamic memory for all general programs.
-I can say to keep explicit dynamic allocation to a minimum, but usage of printf or fopen is fine.
-This way you have as few mallocs to keep track of, and you have ease of use.
-I don't believe dynamic memory is evil, but it can certainly be mismanaged easily.
-If you handle it properly that's good, but each extra allocation is a risk.
-Just make sure that you read up on how to safely use it.
+NASA's environment is different than most people.
+I can't say to avoid dynamic memory completely for all general programs, but I can say to keep explicit allocation to a minimum
+This way as few mallocs need to be tracked, and it allows usage of the printf family or fopen.
+Dynamic memory can very easily be mismanaged, so it is important to use it only when necessary.
+Each extra allocation is another risk so handle it properly.
 
 ### 4. Function Length should be printable on a page with one statement per line
 
