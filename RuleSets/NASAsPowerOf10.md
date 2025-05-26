@@ -435,29 +435,26 @@ NASA does not say anything about column limits in these documents, but excessive
 80 seems to be more preferred, but it tends to more of a soft limit for most people.
 100 characters seems to be the more acceptable hard limit, and it is what I stick by.
 
-### 5. There shall be minimally an average of 2 assertions per function with assertions containing no side-effects and must be boolean
+### 5. There shall be minimally an average of 2 assertions per function with assertions containing no side-effects and must be boolean expressions
 
-If for what ever reason you hate the other rules, this rule you can't hate.
-Assertions are critical to any defensive coding mind set, and they should be used in any coding context.
-Assertions act on a programmer's assumptions that should always remain true or false.
-You can think of assertions as landmines for bugs during development.
-NASA makes a point that unit testing does catch 1 bug every 10 to 100 lines, but combining unit testing with assertions catches much more bugs.
-This makes sense as they are meant to capture different aspects of development.
-The problem with unit tests is that you would need to write that test.
-You probably won't write a test for something you never expected to happen.
-However, assertions can't execute your code like a unit test can.
-Assertions also can't give exact answer like a unit tests as they more so narrow down what is expected behavior.
-A unit test is able to say I expect the answer to be 5 while an assertion can only say the post-condition is greater than zero.
-Together they create a powerful testing strategy that is able to catch much more bugs than using either alone.
+If for what ever reason you hate the other rules this rule you can't hate.
+NASA makes a point that unit testing catches 1 bug every 10 to 100 lines, but combined with assertions unit testing catches much more bugs.
+Of course it is obvious that adding more checks will catch more bugs, but this a superficial way to look at it.
+Unit testing and assertions complement each other since they capture different aspects of development.
+Assertions test a programmer's assumptions that should always remain true or false.
+They are meant to catch errors strictly from a programmer rather than errors from handling data.
+Unit testing is there to test expected or expected-unexpected inputs to give a pass or fail.
+It is there to actually run the unit and find out if the unit does its job correctly.
+Since they are capturing opposite sides of development this is why more bugs are caught.
+Both of these techniques should be used in any coding context.
+It is the best way a programmer can remain sane that their code is as correct as possible.
 
 So where do you use assertions?
+They are used to verify the principle of designing by contract.
+This would mean
 - verify pre-conditions of functions
 - verify post-conditions of functions
-- verify parameter values
-- verify return values
 - verify loop invariants
-
-If you notice, these are checking if actions are abiding by its contract.
 
 Where do you **NOT** use assertions?
 - Validating user input
@@ -465,17 +462,22 @@ Where do you **NOT** use assertions?
 - Handling expected errors (like file open failure)
 - Data outside of your control
 
-In these cases you should **VALIDATE** instead like in rule 7.
-Do not use assertions on user provided data.
+In these cases you should **VALIDATE** like in rule 7.
+Do not use assertions on things you can't say should **ALWAYS** be true or false.
 This is because assertions are removable for performance reasons.
+The idea is that during development the assertion never triggered, so it should be safe to remove.
 An argument can be made if assertions should be removed in the first place since debugging never stops in programming.
-It is more so if performance is of absolute importance.
-If you want to modify the behavior of the default assertions, or don't want them to be removable you can create your own.
-Programs that run infinitely probably don't want to exit the program on assertion failure (especially if your machine is out in space).
-Instead you would want to log it.
+For general cases assertions are typically removed for user convenience, but safety critical systems would want to keep them.
+If you want to modify the behavior of the default assertion, or don't want them to be removable you can create your own.
+
+This brings up a question on how to write an assertion.
+Assertions should
+- Evaluate strictly to a boolean expression
+- Contain no side effects
+- Have a recovery action on failure
+- Be proven that it can fail or hold
 
 NASA defines an assertion like this
-
 ```
 #define c_assert(e) ((e) ? (true) : \
 tst_debugging("%s,%d: assertion '%s' failed\n", \
@@ -483,20 +485,17 @@ __FILE__, __LINE__, #e), false)
 ```
 
 They give an example like this
-
 ```
 if (!c_assert(p >= 0) == true) {
     return ERROR;
 }
 ```
+This way NASA is able to change the logging function if they need and it returns an error.
 
-Defining an assertion like this allows NASA to log the error with a specified routine and allows for error return.
-
-
-How do you write an assertion?
-- Evaluates strictly to a boolean expression
-- Contains no side effects
-- A recovery action is taken on failure
+They also mention static assertions which would depend on what compiled the program.
+Something like `c_assert( 1 / ( 4 – sizeof(void *));`.
+This will trigger a divide by zero warning if the compiler is using a 32-bit machine.
+This is because 32-bit systems have pointers that are 4 bytes while 64-bit systems use 8 bytes.
 
 ### 6. Data objects should be declared in their lowest scope
 
