@@ -500,37 +500,38 @@ This is because 32-bit systems have pointers that are 4 bytes while 64-bit syste
 ### 6. Data objects should be declared in their lowest scope
 
 In C this is the best way to accomplish data hiding.
-It also makes debugging easier by reducing the surface area of things to modify.
-Creating clear variable names is also helpful.
 If a variable is out of scope then it can't be modified or referenced.
-For the most part, in C it would be declaring the variable at the lowest block scope, but there is the static modifier and extern.
+This has the benefit of reducing what can be courrupted and makes debugging easier.
+For the most part, this is as simple as declaring and/or defining the variable at the point of first use.
+However, C has some other neat features that makes this rule slightly more complicated.
 
 #### Static
-You can use the static modifier to declare a function at file scope.
+Typically `static` is know for declaring a variable that persists within a function.
+For the most part this should be avoided as it is an easy way to create side effects.
+However, static can be used on a function to specify that its scope is within the file.
 More specifically it is indicating internal linkage.
-It is kind of like creating a private method since it will be usable only in the source file.
+It is kind of like creating a private method since it will be usable only in that source file.
+These type of functions should **NOT** be declared in the header file, and they should reside in just the source file.
+Defining a static method in the header file would give each file that includes the header a separate function definition.
+It defeats the purpose of specifying internal linkage, and really is not necessary.
+Although I suppose you could try to make your very own Java Interface in C if you really wanted to.
 
+Example of defining a static method
 ```
 static void someFunction(){
     . . .
 }
 ```
 
-static methods should only be defined in the source file and not defined in the header file.
-Defining a static method in the header file would then give each included file a separate function definition.
-Although I suppose you could try to make your very one Java Interface in C if you really wanted to.
-
-You can also create static varaibles that persist between method calls, but this is avoided in favor of pure functions.
-Generally you want to avoid creating static variables in methods as it is a pretty easy way to create side effects.
-
 #### Extern
-The opposite of static would be `extern`.
+The opposite of `static` would be `extern`.
 This specifies external linkage.
 extern is like making a global object that is declared in the header file that later gets defined in the source file to be passed around.
 It is a way to extend the visibility to many source files.
-By default functions are extern in header files hence why you define them in the source file.
+By default functions are extern in the header file hence why you define them in the source file.
 You can of course define extern variables, but caution should be used with them.
 NASA says if two extern variables have the same name, but different types it can create undefined behavior.
+Just make sure that extern objects are unique.
 
 #### Shadowing and Reuse
 Other sub-rules included are discouraging shadowing variables and variable reuse for different unrelated purposes.
@@ -548,9 +549,12 @@ The rule about variable reuse is to create better readability.
 Using a length variable for many unrelated purposes can make debugging more difficult as you then need to find which effectively different length variable is the issue.
 
 #### Pure Functions
-Within this rule is a preference for "pure" functions.
+Within this rule is a preference for `pure functions`.
 NASA says these are functions that do not touch global data, avoid storing local state, and do not modify data declared in the calling function indirectly.
-This can be further aided with the use of const and enums.
+It is basically a function that strictly takes what it is given and will give the same result each time with identical arguments.
+This can be aided with the use of const and enums to declare that this is something that won't be modified.
+Const especially should be used on reference types whenever possible.
+This wikipedia article explains a little more (Pure Functions Wikipedia)[https://en.wikipedia.org/wiki/Pure_function]
 
 ### 7. Check all return values of non-void functions and validate passed in parameters
 
