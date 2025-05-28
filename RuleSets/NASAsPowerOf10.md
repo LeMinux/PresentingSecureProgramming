@@ -558,25 +558,54 @@ This wikipedia article explains a little more (Pure Functions Wikipedia)[https:/
 
 ### 7. Check all return values of non-void functions and validate passed in parameters
 
-This rule is the flip side of rule 5, and just like rule 5 it can be implemented in any language.
-A lot of bugs slip by simply because the return values or parameters were not checked.
+This rule is the flip side of rule 5.
+Just like rule 5, this rule is critical to defensive coding, and can be implemented in any language.
+While rule 5 is for checking if programmers are making errors, validation checks if the state of the program is usable.
+There is an expectation that invalid data can be given, or it makes sense to check for invalid data and return an error.
+Essentially this rule helps to create robust programs that can handle most situations.
 
 #### Return Value Checking
-In the most extreme cases you would check the results of printf, but NASA says in cases where the return does not matter to cast as void.
-so this -> `(void)printf("%s", "Hi")`.
+
+There is not much of a reason that the return value of functions should not be checked.
+The only case where the return value would not matter is if the case of error and success results in the same response.
+NASA gives printf and close as an example.
+In such matters, casting to void is an acceptable way to explicitly express this `(void)printf("%s", "Hi")`.
 This way others know the return value is purposely ignored, but also allows for questioning if it should be ignored.
-Checking the return value of methods that give one is justa good practice in general.
-This will help with troubleshooting in some cases as you won't continue with erroneous behavior.
-This would also extend into you creating methods.
+In most cases though the return value should be checked because it is the function's way of communication something went wrong.
+This is especially true if the function needs to propagate the error up the call chain.
+This type of behavior would also extend into programmer made functions.
+As the function is being created there is a thought about what can go wrong with each step.
 Since you are checking for error status you have an incentive to return an error status.
 
+#### Try/Catch
+
+While this rule is meant for status checking and handling, try/catch exceptions kinda fall into here just not in the same way.
+try/catch is there to catch exceptional errors that could not be accounted for.
+At least it is for most languages.
+Languages like Python actually encourage it extensively because that slow language some how made try/catch fast.
+In most cases though, use of try/catch should be avoided.
+This is because it can obfuscate control flow, hinder performance, or create a bad state.
+Don't use try/catch as a way to lazily forgo status checking, and don't use try/catch as a substitute for control flow.
+If a condition can be checked that would prevent an exception in the first place that is more preferable.
+Instead of encountering the error and then trying to fix it why not just handle the error before hand.
+Of course it may not always be possible to avoid try/catch if you can't figure out an error before hand.
+In these cases it may be useful to bubble up the exception to something that can handle it, or handle it yourself.
+Be carful about the what exceptions you claim to handle.
+Too specific and the program may miss a more general exception and continue in a bad state.
+Too broad and the program may just not handle it properly.
+In a way the rule about casting void if failure and success results in the same execution can apply here with a little variation.
+You don't want to risk swallowing a bubbled up exception, so if the result of an exception getting caught or not is the same don't catch that exception.
+Essentially just catch exceptions you can control, or simply just log and exit.
+
 #### Validating Parameters
-Validating parameters is probably the most important rule to have in any security focused rule.
+
+Validating parameters is one of the most important rule to have in any security focused guideline.
 So many vulnerabilities occur from simply not checking parameters especially in public functions.
 Public functions are well. . . public, so they can accept any kind of input from anywhere.
 Therefore, it is important to make sure the public function can actually use the parameters it was given.
-Private functions should also validate their parameters, but here you can get away with using assert statements.
-This promotes the principles of creating total functions in where functions can handle any input.
+Private functions should also validate their parameters although depending on the context assertions can be used.
+In either case, the principle of creating total functions is prefered where functions can handle any input.
+It does not matter whether the parameters are valid or invalid the function will handle it accordingly.
 Weakly typed languages may have a more difficult time with this, but I think the type should be validated/asserted.
 Types are an assumption in weakly typed languages, and you should check your assumptions.
 
@@ -584,7 +613,7 @@ Example of validating parameters using the third example from rule2.
 ```
 /* here size includes the NUL byte* /
 char* charSearch(const char* string, char needle, int size){
-    if(string == NULL || !isalnum(needle) || size < 0)
+    if(string == NULL || !isalnum(needle) || size <= 0)
         return NULL;
 
     for(int i = 0; i < size - 1; ++i){
