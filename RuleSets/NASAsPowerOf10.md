@@ -854,8 +854,10 @@ Personally I've never needed to use a variadic function, and when I did think ab
 
 ### 9. Pointers should at most have two levels of dereferencing
 
-In general, the point of this rule is to improve code clarity and reduce pointer misuse.
-The original intent of the NASA power of 10 doc was to only have one level of dereferencing, but the JPL document changed it to no more than two levels of dereferencing.
+Pointers are an essential tool in C, but as NASA says even the most experienced misuse it.
+They are a cause of a lot of segmentation faults, security vulnerabilities, and bad code, so it is important that their use is limited and clear.
+Once again NASA points to static analyzers and humans having potential trouble understanding the flow with bad pointers.
+Originally, the NASA power of 10 doc only allowed one level of dereferencing, but the JPL document changed it to no more than two levels of dereferencing.
 As an extension, this means declaration of pointers should have no more than two levels of indirection.
 Below are some examples
 ```
@@ -870,70 +872,96 @@ void someFunction(char*** some_parameter){. . .} /* justification needed */
 If you want to see more examples look at MISRA C 2004 advisory rule 17.5.
 
 I guess the reason for JPL altering the rule is be less restrictive and allow direct usage of 2D arrays and pointers to pointers.
-Most of the time you will only ever need two levels of indirection, but there may be the rare case where more is required.
+Pointers are a large data type, so NASA may have wanted to reduce stack usage by decreasing middle pointers that rule 1 encouraged.
+Most of the time though you will only ever need two levels of indirection, but programming is programming and there are exceptions with justification.
 Two examples are an array of images represented as a 2D array of pixels, or changing the address of a 2D array.
-If more levels of dereferencing are needed, a middle variable should be used for clarity.
+These cases are pretty rare, so sticking to two levels is much prefered.
 
 #### Function Pointers
 
 Function pointers on the other hand are advised to be avoided unless it is const.
 The original NASA Power of 10 document completely prohibited function pointersv due to static analyzer concerns.
-The JPL document then changed this to allow const function pointers since static analyzers could determine const function pointers.
+The JPL document then changed this to allow const function pointers since static analyzers could follow const function pointers.
 Apart from static analyzers, rule 1 would apply to function pointers.
 Function pointers that keep changing values off dynamic input makes it difficult to determine where the code will end up.
-So if funtions pointers are to be used it should be as explicit as possible to know where they go.
+If funtions pointers are to be used, they should be as explicit as possible to know where they go.
 
 #### Dereferencing
 
-There are multiple ways to dereference something.
-They are `[], *, ->`.
+There are multiple ways to dereference something, so this rule isn't just strictly on the usage of \*.
+Rule 27 in the JPl document is clear in saying
+> Statements should contain no more than two levels of dereferencing per object.
+The three dereferencing operators are `[]`, `*`, and `->`.
 - \* is the standard dereferencing operator
 - -> is for accessing a member from a struct pointer
 - [] is dereferencing with a given offset in arrays
 
-These operations should not be hidden in a macro or be inside typedef declarations.
+These operations should not be hidden in a macro or inside typedef declarations.
 ```
 typedef int8_t* INTPTR
-INTPTR* some_pointer; /*creating an implicit double pointer*/
+INTPTR* some_pointer; /*creating a double pointer and hard to figure out what the intent is */
 
 #define GET_VALUE(x) (*x)
 GET_VALUE(*x) /* expands to **x */
 ```
 
-
+The act of dereferencing should be clear as it is one of the most common cases for a segmentation fault or memory bugs.
 It should be clear what is getting dereferenced and in what order.
 Using parenthesis is quite helpful to explicitly show the order.
+Below are some examples.
 ```
+/* This example uses all three just to show a point */
 *some_struct->pointer_array[x]
+
 vs
+
 *((some_struct->pointer_array)[x])
 
-/*example of just * and ++
+*p++
+
 vs
 
+(*p)++
+
+or
+
+*(p++)
 
 ```
-These operations should be explicit as they are the culprits for segmentation faults.
 
 #### Pointer Arithmetic
-There is also another aspect of dereferencing which is pointer arithmetic.
+
+Pointer arithmetic shall be limited to just array objects.
+The most prefered arithmetic method is using the `[]` operator.
+It is explicit in saying it is done on an array and at this index.
+The index should be validated that is it within bounds, and that overflows have not occured.
+Failure to conduct proper pointer arithmetic is very damaging and can result in vulnerabilities.
+You do not need to account for the size of the elements when indexing it is handled automatically.
+`struct_array + 1` will go one index forward while `struct_array + sizeof(struct)` will index forward the count that is the struct's size, so you do not go one index forward.
 MISRA C rules 17.1 - 17.4 explain some rules on what is best.
 In summary array indexing shall be the only form of pointer arithmetic, and pointer arithmetic shall only be done within arrays.
 
 ### 10. Compile with the most pedantic compiler settings with no warnings and check daily with static analyzers
 
-This rule is language dependent, but popular enough languages have several tools.
-With the history of C, This rule is a large part in why NASA uses C.
-There is extensive tool support for C which allows for much more thorough checks.
-A compiler can conduct basic checks, but a static analyzer can go into more detail.
+This rule is language dependent, but popular enough languages should have several tools that are free or proprietary.
+NASA says there is no excuse to not use these tools for any development, and they are right.
+If you want to take security more seriously looking into static analyzers is a great step.
+The usage of a static analyzer actually helps to forcefully implement some of these rules.
+If the static analyzer or compiler gets confused, the rules related to control flow have been broken.
+A good compiler can give quite deep warnings, but a static analyzer can go into even more detail.
+For example, NASA mentions a lot about bounds in their rules which a static analyzer for C can determine, but not a strict compiler.
 A compiler can combine some aspects of a static analyzer for convenience, but it may not be as extensive.
-For example, NASA mentions a lot about bounds in their rules which a static analyzer can determine, but not a strict compiler.
+Once again this depends on the language.
+C has great compilers, but weakly typed languages may barely have any flags for checking.
+Combined with the fact that each language has their own issues it is more beneficial to use a tool meant to catch those issues.
 
 #### C
-Some basic GCC options are `-Wextra -Werror -Wpedantic`.
+
+C has a few compilers like GCC and Clang, but I will only go over GCC since that is what I know.
+The most basic flags in GCC that help with getting as many errors as possible are `-Wall -Wextra -Werror -Wpedantic`.
 According to the JPL C Coding Standard, NASA uses `gcc –Wall –Wpedantic –std=iso9899:1999` (iso9899:1999 is C99).
 Although the document was written before C11 was released, so they may not use C99 anymore.
-Enforcing a standard is helpful since flags like -Wpedantic will change their behavior based off the standard.
+Enforcing a standard is helpful though since flags like -Wpedantic will change their behavior based off the standard.
 Some other GCC options include
 ```
 -Wtraditional
@@ -945,10 +973,15 @@ Some other GCC options include
 -Wmissing-prototypes
 ```
 There is also a built in ASAN in gcc by using `-fsanitize=address`.
+This is a very helpful flag for catching those pesky buffer overflows or off by one errors.
 Note that you should not ship out your code with ASAN enabled since it is for debugging memory and adds overhead.
-There is also the `-fanalyzer` flag in GCC that can be used for static analysis.
+In recent development, GCC now comes with a static analyzer with the `-fanalyzer` option family if gcc is configured to use it.
+This option looks at program flow, and tries to find bugs like double frees and leaked open files.
+It can even help with rule 1 wth the `-fanalyzer-too-complex` flag which warns the user if the internal limit is reached.
+For a list of static analyzers Spinroot shows some here (Spinroot Static Analyzers for C)[https://spinroot.com/static/].
 
 #### Java
+
 Javac has options like `-Xlint:all -Werror -deprecation`.
 A few other -Xlint options are listed below.
 ```
@@ -962,16 +995,23 @@ unchecked: Warns about the unchecked operations.
 varargs: Warns about the potentially unsafe vararg methods.
 ```
 
+I have not really used Java extensively, but this is here to show that sometimes you just need to look at the man page to know what options you have.
+
 #### Python
-Python has options like `-Werror -Walways -X dev`
+
+Python has options like `-b -Werror -Walways -X dev`
 There is also the `-I` option for isolating the program.
 It does this by ignoring Python's environment variables, and removes the script's path from sys.path.
-Due to python not being a compiled language it does not have as many options compared to C or Java.
-There are static analyzers for Python though.
+This is more of a security option than a compilation option though.
+Due to python being an interpreted language it does not have as many options compared to C or Java.
+For weakly typed languages it would be more beneficial to use a static analyzer to catch errors faster.
 
 #### Other Languages
-Depending on the language, there may be third party static analyzers to add additional aid.
+
 This wikipedia article shows some static code analyzers available (Wikipedia list of static code analysis)[https://en.wikipedia.org/wiki/List_of_tools_for_static_code_analysis]
+It is not an extensive list of all that is available, but as long as a language is not dead it probably has a static analyzer.
+Even more obscure languages like R have an option to use, and apparently there is a talk about static code analysis for APL.
+Why anyone would use these languages in a serious context who knows, but this is just to show a point that there are options.
 
 ## Conclusion
 //Just write something down to get an idea
