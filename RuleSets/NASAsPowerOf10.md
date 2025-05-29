@@ -606,8 +606,6 @@ Therefore, it is important to make sure the public function can actually use the
 Private functions should also validate their parameters although depending on the context assertions can be used.
 In either case, the principle of creating total functions is prefered where functions can handle any input.
 It does not matter whether the parameters are valid or invalid the function will handle it accordingly.
-Weakly typed languages may have a more difficult time with this, but I think the type should be validated/asserted.
-Types are an assumption in weakly typed languages, and you should check your assumptions.
 
 Example of validating parameters using the third example from rule2.
 ```
@@ -642,84 +640,92 @@ MISRA C 2004 rule 20.3 mentions some ways of conducting validation
 - Demonstrate statically that the input parameters can never take invalid values.
 
 ### 8. The preprocessor should be left for simple tasks like includes, simple macros, and header guards
-//TALK ABOUT NOT REDEFINING LANGAUEE
 
-The preprocessor can make debugging more difficult since it obfuscates the actual value.
-This can make it difficult for tools to verify the code, and for humans to read.
-It is also a concern in debugging since the actual value is placed instead of the define tag.
-The preprocessor is basically just copy and paste, so debuggers will see the value 8 instead of LENGTH_MAX.
-In combination with this obfuscation, it is very important that macros are syntactically valid and contain no side effects.
-NASA further says when defining a macro you shall not define them inside a block or function, and the usage of #undef shall not be used.
-This extends into include statements where only preprocessor components or comments should precede an include.
+In C, the preprocessor is a tool that allows the code to be altered just before compiling.
+It is essentially a text substitution tool capable of simplifing tasks, but also capable of creating stupidly unreadable code.
+It is a very powerful obfuscation tool that if used haphazardly can harm readability for humans, tool based checkers, and debuggers.
+With this obfuscation, it is important that the macro itself is syntatically valid which would mean encasing the body in parenthesis or curly brackets.
+Within the macro itself it should not hide pointer dereferencing or declarations.
+The Macros themselves should reside only in the header file and not in the middle of blocks or functions.
+They should not be defined within a block or function, and instead defined only in the header file.
 
-The allowed macros are explained in MISRA C 2004 rule 19.4.
+So what exactly would be a simple macro?
+Simple can be subjective, but listed below is for sure simple.
+- File inclusion
 - Constant values
 - Constant expressions
-- Macros expanding into an expression
-- Storage class specifiers
-- braced initializer
-- Parenthesized expressions
 - String literals
-- Do while zero construct\*
+- Braced initializer
 
-shown below
+Below can be simple, but can be complex depending on what is being done.
+- Macro expanding into an expression
+- Do while zero construct
+
+The do-while one is a bit weird, but from what I've researched it seems to try and avoid the faults of the preprocessor.
+The do-while is a way to create more complicated expressions while maintaining scope and having to insert a semi-colon at the end.
+It's a little bit of a hack, but compiler optimization will remove the do while portion.
+
+shown below are some examples
 ```
-/* The following are compliant */
+#include <stdio.h>                  /* including standard library */
+#include "MyHeader.h"               /* including programmer made header */
 #define PI 3.14159F                 /* Constant */
 #define XSTAL 10000000              /* Constant */
 #define CLOCK (XSTAL/16)            /* Constant expression */
 #define PLUS2(X) ((X) + 2)          /* Macro expanding to expression */
-#define STOR extern                 /* storage class specifier */
 #define INIT(value){ (value), 0, 0} /* braced initializer */
-#define CAT (PI)                    /* parenthesized expression */
-T#define FILE_A "filename.h"        /* string literal */
+#define FILE_A "filename.h"         /* string literal */
 #define READ_TIME_32() \
     do { \
         DISABLE_INTERRUPTS (); \
         time_now = (uint32_t)TIMER_HI << 16; \
         time_now = time_now | (uint32_t)TIMER_LO; \
         ENABLE_INTERRUPTS (); \
-    } while (0) /* example of do-while-zero */
+    } while (0)                     /* example of do-while-zero */
 ```
 
-\*The do-while one is a bit weird, but from what I've researched it seems to try and avoid the faults of the preprocessor.
-The do-while is a way to create more complicated expressions while maintaining scope and having to insert a semi-colon at the end.
-It's a little bit of a hack, but compiler optimization will remove the do while portion.
+Below are things the preprocessor should not be used for.
+- Redefining the language
+- Hide pointer dereferencing
 
-Below are listed as not compliant
 ```
 /* the following are NOT compliant */
-#define int32_t long    /* use typedef instead */
-#define STARTIF if(     /* unbalanced () and language redefinition */
-#define CAT PI          /* non-parenthesised expression */
+#define int32_t long          /* use typedef instead */
+#define STARTIF if(           /* unbalanced () and language redefinition */
+#define CAT PI                /* not syntatically valid */
+#define DEREF(p) ((*(p)) + 2) /* dereferencing */
 ```
 
-The C preprocessor can do much more than simple defines and includes.
-It is quite an extensive tool that allows for ease of use, or absolute spagetti disguised as cohesion.
-Below I will explain some of the powers it can bring and wether NASA bans it.
+The C preprocessor can do much more than simple defines and includes though.
+It is quite an extensive tool with a few secrets.
+Below I will explain some of the secret powers and if they should be used.
 
 #### Function Like Macros
-Function like macros are not banned under NASA's rule, but certain usages can be dangerous.
+
+Function like macros are not banned under NASA's rule, but caution should still be used.
 In basic terms, a function like macro is defined as any macro that takes in arguments.
-it is defined like `#define <name of macro> (<arguments>) <definition using arguments>`.
-For simple expressions it allows you to ignore the type, so you do not need to create several funtions to handle many types.
-It can also be for expressions that don't need to be a function since they are so short, and function overhead is a concern.
+They can even be used to ignore the type as long as it is expected to pass in a proper type.
+it is defined like `#define <name of macro>(<arguments>) <definition using arguments>`.
+Note that there is no space after the name and parenthesis for the arguments.
+This is because if there is a space it would create an object like macro instead.
 A few examples are below.
 ```
 #define MAX(a,b)  ((a)>(b) ? (a):(b))
 #define MIN(x,y)  ((x)>(y)) ? (x):(y))
 #define SQUARE(z) ((z) * (z))
+#define ADD_TWO (a, b) ((a) + (b)) /* not valid. The macro expands to (a, b) ((a) + (b))*/
 ```
+
 Now remember that the preprocessor will just copy and paste the values into the expression.
 This is why the arguments are surrounded in parenthesis to maintain correct order of operations.
 If an expression like `3 + 4 * 9` were used in SQUARE without parenthesis it would expand to `3 + 4 * 9 * 3 + 4 * 9` instead of `(3 + 4 * 9) * (3 + 4 * 9)`.
-This would mean an evaluation of 147 vs 78.
+This would mean an evaluation of 147 instead of 1521.
 However this doesn't solve other side effects like incremenation.
 Using an expression like `MAX(x++, y - 1);` in the MAX macro would result in `(x++) > (y - 1) ? (x++):(y - 1);`.
 This can result in x getting incremented twice and seemingly give the correct post-fix value if it is the max value.
-This can lead to unspecified behavior in the SQUARE macro `SQUARE(++some_int); - > ((++some_int) * (++some_int));`.
+This can also lead to unspecified behavior in the SQUARE macro `SQUARE(++some_int); - > ((++some_int) * (++some_int));`.
 One way could be to use the typeof() preprocessor method, but this is GNU specific.
-`#define Square(x) ({ typeof (x) _x = (x); _x * _x; })`.
+`#define SQUARE(x) ({ typeof (x) _x = (x); _x * _x; })`.
 A more simple way would be to conduct the side effect before the macro.
 ```
 ++x;
@@ -732,7 +738,7 @@ If a macro would be better off as a function, make a function instead.
 #### Conditional Compiling
 
 Conditional compilation are the statements like `#if, #ifdef, #elif, #else, #ifndef, #endif`.
-You have probably used them for header guards.
+You have probably used them for header guards like so
 ```
 #ifndef <HEADER_FILE>
 #define <HEADER_FILE>
@@ -743,18 +749,18 @@ You have probably used them for header guards.
 ```
 
 NASA says this is about how far you should go with these conditionals, but sometimes it is unavoidable.
-If you must use them beyond the standard header guard, all `#else, #elif, and #endif` must reside in the same file as their `#if or #ifdef`.
-A max limit of 2 is prefered.
-Adding too many conditional compilations will exponentially create test cases.
-On the topic of header files, MISRA C 2004 rules 8.1, 8.8, 19.1, 19.2, 19.15, 20.1 explains more details.
-//go a little more into header file practices
+If you must use them beyond the standard header guard, all `#else, #elif, and #endif` must reside in the same file as their `#if or #ifdef`, and their use should be limited.
+Adding too many conditional compilations will exponentially increase how much testing will be done because there are the number of conditonals to the power of 2.
+NASA gives an example of 10 conditional compilations creating 2^10 possible versions which would be 1,024 things to test.
 
 #### Token Pasting
+
 Token pasting is probably something most new people to C haven't even heard about.
 Its usage is defined by using "##" inside the #define macro.
 This operation takes two tokens and concatenates them into one token.
-A define like `#define combine(arg1, arg2) arg1 ## arg2` would combine arg1 and arg2 into one token.
-For example these two examples would print out 3.
+Example: `#define combine(arg1, arg2) arg1 ## arg2`
+This example would combine arg1 and arg2 into one token.
+In these two examples both would print out 3.
 ```
 #define xy 3
 #define combine(arg1, arg2) arg1 ## arg2
@@ -763,18 +769,22 @@ printf("%d\n", combine(x, y));
 -----------------------------------------------
 
 #define combine(arg1, arg2) arg1 ## arg2
+Some
 int xy = 3;
 printf("%d\n", combine(x, y));
 
 ```
 However if you were to surround x and y in quotes it would create "x""y" which is not a valid token.
-Token pasting can very quickly create hard to read code for humans and tools, so NASA bans it to keep things simple.
+Token pasting is sneaky little tactic that makes it hard to read what the intention is.
+It's like you read two unrelated things, but I guess it just made something.
+It can very quickly create hard to read code for humans and tools, so NASA bans it to keep things simple.
 
 #### Stringize
-On the other hand '#' is a stringize operator and turns the given parameter into a string.
+On the other hand '#' is a stringize operator, and it turns the given parameter into a string.
 The assert statement in rule 5 is a good example.
 The way that it accomplishes this is by surround the argument in double quotes.
-If there are already double quotes it will escape it.
+If there are already double quotes it will escape them.
+It is as if the programmer added the double quotes, but this makes it more dynamic.
 ```
 #define TO_STRING(x) #x
 printf("1> %s\n", TO_STRING(Big Ol Cheese Blocks));
@@ -788,9 +798,12 @@ Output:
 3> "Big Ol ""Cheese Blocks"
 4> "Big Ol \"Cheese Blocks"
 ```
+
 Stringize is allowed since it is limited in what it can do.
+It just turns the given parameter into a string, so it doesn't allow for sneaky stuff like token pasting or recursive macros.
 
 #### Recursive Macro Calls
+
 The thing about Macros is that they are not actually recursive.
 Once the macro expands it will not expand into itself again if it was directly from the previous pass.
 This is refered to as `painted blue`.
@@ -814,6 +827,7 @@ REPEAT_3(PRINT, "Hello") /* usage */
 This StackOverFlow post explains in more detail (recursive preprocessor to create a while loop)[https://stackoverflow.com/questions/319328/how-to-write-a-while-loop-with-the-c-preprocessor/10542793#10542793].
 
 #### Variadic Macros
+
 Usage of __VA_ARGS__ allows you to make a variadic macro and sometimes is used for recursive calling macros.
 It's usage tends to lead to macro chaining like this.
 ```
@@ -831,7 +845,6 @@ Their usage also tends to lead to unreadable code like with recursive calling ma
 #### Variadic Functions
 Although not explicitly a preprocessor defined behavior, defining variadic functions are also banned.
 The rule does specify anything with variadic behavior using ellipses (anything with ...), and the JPL Coding Standard references specifically MISRA C 2004 Rule 16.1.
-variadic functions are like printf.
 There is not an explicit reason why defining variadic functions are banned, but I think it is probably to reduce complexity and allow better static analysis.
 It could also be because of rule 7 in needing to verify function parameters.
 Normal function parameters have an explicit type, but variadic functions can accept any number of arguments that can be any type with no way to verify type.
@@ -841,40 +854,44 @@ Personally I've never needed to use a variadic function, and when I did think ab
 
 ### 9. Pointers should at most have two levels of dereferencing
 
-The NASA Power of 10 doc says "no more than one level of dereferencing should be used."
-To align more with the JPL C Standard I made it "two levels of dereferencing."
-This way 2D arrays or pointer to pointers can be used.
-This also means declaration of pointers should have no more than two levels of indirection.
-Most of the time you'll only ever need two levels of indirection, but there may be the rare case where more is required.
-Two examples are an array of 10 images with images represented as a 2D array of pixels, or changing the address of a 2D array.
-
+In general, the point of this rule is to improve code clarity and reduce pointer misuse.
+The original intent of the NASA power of 10 doc was to only have one level of dereferencing, but the JPL document changed it to no more than two levels of dereferencing.
+As an extension, this means declaration of pointers should have no more than two levels of indirection.
+Below are some examples
 ```
 int8_t * s1;    /* compliant */
 int8_t ** s2;   /* compliant */
-int8_t *** s3;  /* not compliant */
+int8_t *** s3;  /* justification needed */
 
 void someFunction(char* some_parameter){. . .}   /* compliant */
 void someFunction(char** some_parameter){. . .}  /* compliant */
-void someFunction(char*** some_parameter){. . .} /* not compliant */
+void someFunction(char*** some_parameter){. . .} /* justification needed */
 ```
 If you want to see more examples look at MISRA C 2004 advisory rule 17.5.
 
-Function pointers on the other hand are advised to be avoided unless it is const.
-The original NASA Power of 10 document completely avoided function pointers, but the JPL Coding Standard revised it to allow const function pointers.
-Both documents advise against the usage of non-const function pointers.
-This is so static analyzers and tool checkers can conduct their checks normally.
-There is not a way to know where the function pointer will go since it is run time dependent.
+I guess the reason for JPL altering the rule is be less restrictive and allow direct usage of 2D arrays and pointers to pointers.
+Most of the time you will only ever need two levels of indirection, but there may be the rare case where more is required.
+Two examples are an array of images represented as a 2D array of pixels, or changing the address of a 2D array.
+If more levels of dereferencing are needed, a middle variable should be used for clarity.
 
-In general, the point of this rule is to improve code clarity and reduce pointer misuse.
-Having multiple dereferences, especially with usage of pre/post incremenation, can be confusing.
-If more levels of dereferencing are needed then use a middle variable for clarity.
-There are three dereferencing operators.
+#### Function Pointers
+
+Function pointers on the other hand are advised to be avoided unless it is const.
+The original NASA Power of 10 document completely prohibited function pointersv due to static analyzer concerns.
+The JPL document then changed this to allow const function pointers since static analyzers could determine const function pointers.
+Apart from static analyzers, rule 1 would apply to function pointers.
+Function pointers that keep changing values off dynamic input makes it difficult to determine where the code will end up.
+So if funtions pointers are to be used it should be as explicit as possible to know where they go.
+
+#### Dereferencing
+
+There are multiple ways to dereference something.
 They are `[], *, ->`.
 - \* is the standard dereferencing operator
 - -> is for accessing a member from a struct pointer
 - [] is dereferencing with a given offset in arrays
-These operations should not be hidden in a macro or be inside typedef declarations.
 
+These operations should not be hidden in a macro or be inside typedef declarations.
 ```
 typedef int8_t* INTPTR
 INTPTR* some_pointer; /*creating an implicit double pointer*/
@@ -882,14 +899,28 @@ INTPTR* some_pointer; /*creating an implicit double pointer*/
 #define GET_VALUE(x) (*x)
 GET_VALUE(*x) /* expands to **x */
 ```
+
+
+It should be clear what is getting dereferenced and in what order.
+Using parenthesis is quite helpful to explicitly show the order.
+```
+*some_struct->pointer_array[x]
+vs
+*((some_struct->pointer_array)[x])
+
+/*example of just * and ++
+vs
+
+
+```
 These operations should be explicit as they are the culprits for segmentation faults.
 
+#### Pointer Arithmetic
 There is also another aspect of dereferencing which is pointer arithmetic.
 MISRA C rules 17.1 - 17.4 explain some rules on what is best.
 In summary array indexing shall be the only form of pointer arithmetic, and pointer arithmetic shall only be done within arrays.
 
 ### 10. Compile with the most pedantic compiler settings with no warnings and check daily with static analyzers
-
 
 This rule is language dependent, but popular enough languages have several tools.
 With the history of C, This rule is a large part in why NASA uses C.
