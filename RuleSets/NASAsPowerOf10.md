@@ -100,7 +100,7 @@ Finding a specific value in an array, or calling a function in a standard for lo
 It may not make sense to add an extra variable into the conditionalor check for error each iteration.
 Sometimes they offer a more simple solution.
 It would not make much sense to completely ban their usage.
-If anything it would be an advisory rule against their usage unless it is foTBut then again, that's basically just saying use them when they fit.
+If anything it would be an advisory rule against their usage, but that's basically just saying use them when they are appropriate.
 Preferably your loops would be a simple enough to where they are not needed or only one of these statement would be needed.
 
 #### Recursion
@@ -855,11 +855,15 @@ Personally I've never needed to use a variadic function, and when I did think ab
 ### 9. Pointers should at most have two levels of dereferencing
 
 Pointers are an essential tool in C, but as NASA says even the most experienced misuse it.
-They are a cause of a lot of segmentation faults, security vulnerabilities, and bad code, so it is important that their use is limited and clear.
+They are the cause of a lot of segmentation faults, security vulnerabilities, and bad code, so it is important that their use is limited and clear.
 Once again NASA points to static analyzers and humans having potential trouble understanding the flow with bad pointers.
 Originally, the NASA power of 10 doc only allowed one level of dereferencing, but the JPL document changed it to no more than two levels of dereferencing.
+I guess the reason for JPL altering the rule is be less restrictive and allow direct usage of 2D arrays and pointers to pointers.
+Pointers are a large data type, so NASA may have wanted to reduce stack usage by decreasing holding value pointers.
+Most of the time though you will only ever need two levels of indirection, but programming is programming and there are exceptions with justification.
+These cases are pretty rare, so sticking to two levels is much prefered.
 As an extension, this means declaration of pointers should have no more than two levels of indirection.
-Below are some examples
+Below are some examples from MISRA C advisory rule 17.5.
 ```
 int8_t * s1;    /* compliant */
 int8_t ** s2;   /* compliant */
@@ -868,23 +872,25 @@ int8_t *** s3;  /* justification needed */
 void someFunction(char* some_parameter){. . .}   /* compliant */
 void someFunction(char** some_parameter){. . .}  /* compliant */
 void someFunction(char*** some_parameter){. . .} /* justification needed */
-```
-If you want to see more examples look at MISRA C 2004 advisory rule 17.5.
 
-I guess the reason for JPL altering the rule is be less restrictive and allow direct usage of 2D arrays and pointers to pointers.
-Pointers are a large data type, so NASA may have wanted to reduce stack usage by decreasing middle pointers that rule 1 encouraged.
-Most of the time though you will only ever need two levels of indirection, but programming is programming and there are exceptions with justification.
-Two examples are an array of images represented as a 2D array of pixels, or changing the address of a 2D array.
-These cases are pretty rare, so sticking to two levels is much prefered.
+/* if more than 2 levels is required */
+
+int8_t*** three_dim_array = < some address >
+for(int i = 0; i < LENGTH_OF_THREE_DIM; ++i){
+    int8_t** two_dim_holding_value = three_dim_array[i]
+    /* stuff done with holding value */
+}
+
+```
 
 #### Function Pointers
 
 Function pointers on the other hand are advised to be avoided unless it is const.
-The original NASA Power of 10 document completely prohibited function pointersv due to static analyzer concerns.
+The original NASA Power of 10 document completely prohibited function pointers due to static analyzer concerns.
 The JPL document then changed this to allow const function pointers since static analyzers could follow const function pointers.
 Apart from static analyzers, rule 1 would apply to function pointers.
 Function pointers that keep changing values off dynamic input makes it difficult to determine where the code will end up.
-If funtions pointers are to be used, they should be as explicit as possible to know where they go.
+If function pointers are to be used, they should be as explicit as possible to know where they go.
 
 #### Dereferencing
 
@@ -905,7 +911,7 @@ INTPTR* some_pointer; /*creating a double pointer and hard to figure out what th
 GET_VALUE(*x) /* expands to **x */
 ```
 
-The act of dereferencing should be clear as it is one of the most common cases for a segmentation fault or memory bugs.
+The act of dereferencing should be clear as it is one of the most common cases for a segmentation fault or memory bug.
 It should be clear what is getting dereferenced and in what order.
 Using parenthesis is quite helpful to explicitly show the order.
 Below are some examples.
@@ -923,7 +929,7 @@ vs
 
 (*p)++
 
-or
+or depending on intention
 
 *(p++)
 
@@ -931,15 +937,13 @@ or
 
 #### Pointer Arithmetic
 
-Pointer arithmetic shall be limited to just array objects.
-The most prefered arithmetic method is using the `[]` operator.
+Pointer arithmetic and comparison shall be limited to just array objects and within the bounds of said array object.
+The most prefered arithmetic method is using the `[]` operator to access elements.
 It is explicit in saying it is done on an array and at this index.
 The index should be validated that is it within bounds, and that overflows have not occured.
-Failure to conduct proper pointer arithmetic is very damaging and can result in vulnerabilities.
-You do not need to account for the size of the elements when indexing it is handled automatically.
-`struct_array + 1` will go one index forward while `struct_array + sizeof(struct)` will index forward the count that is the struct's size, so you do not go one index forward.
+You do not need to account for the size of the elements when indexing since it is handled automatically.
+`struct_array + 1` will go one index forward while `struct_array + sizeof(struct)` will index forward the the struct's size, so you do not go one index forward.
 MISRA C rules 17.1 - 17.4 explain some rules on what is best.
-In summary array indexing shall be the only form of pointer arithmetic, and pointer arithmetic shall only be done within arrays.
 
 ### 10. Compile with the most pedantic compiler settings with no warnings and check daily with static analyzers
 
@@ -1014,23 +1018,34 @@ Even more obscure languages like R have an option to use, and apparently there i
 Why anyone would use these languages in a serious context who knows, but this is just to show a point that there are options.
 
 ## Conclusion
-//Just write something down to get an idea
-So those are the rules.
-In a broad sense these rules can be summarized into three catagories.
-Those are predictable execution, defensive coding, and code clarity.
-// Coudl make a table here
-C specific rules
-3, 8, 9
 
-Rules that apply to any langauge
-1, 2, 4, 5, 6, and 7
+Hopefully now you understand what NASA's Power of 10 means.
+It is not just a security guideline, but a mindset to follow.
+TigerBeetle is not wrong in stating that these rules will change how you code forever.
+You are more concious in how you code for yourself and others.
+You appreciate what it means to make robust code because it is not just about handling incorrect data.
+It is having a plan for whatever can go wrong.
+You try your very best to make code that is as correct as possible.
+NASA knows that these rules may seem draconian, especially with rules like 3 and 1, but remember these guidelines were developed where lives depend on correctness.
+Applications like planes, nuclear power plants, cars, or medical machines have people's lives at risk.
+You are right to say not every situation is saftey critical and does not require these rules.
+You are right to say that it is impossible for some languges to follow every rule here.
+However, maybe the question is not if you can implement every rule, but what rules you can implement.
+Yes, these rules are for C, but this should not block you from taking another look and finding out what you can do.
+To show this, the table below will visual what catagory a rule releates to, and the reason as to why or why not the rule is C specific.
 
-Depends on the language
-8, 9, 10
-
-Rules 2 and 3 are in the predictable execution catagory.
-Rules 5, 6, 7, and 10 relate to defensive coding
-Rules 1, 4, 8, 9
+| Rule | Catagory |  C Specific | Reason       |
+| :--: | :------: | :---------: | :----------: |
+| 1    | Code Clarity<br>Predictable Execution | No | Control flow is created by the programmer. |
+| 2    | Predictable Execution | No | Any loop can be set to have bounds. |
+| 3    | Predictable Execution | Yes | OOP & weakly typed languages can not avoid the HEAP. |
+| 4    | Code Clarity | No | Programmers make large functons. |
+| 5    | Defensive Coding | No | Assertions can be created in any language. |
+| 6    | Defensive Coding<br>Clear code | No  | Any language with scope can declare at lowest scope. |
+| 7    | Defensive Coding | No | Any language with functions and returns can check them. |
+| 8    | Code Clarity | Yes | Not all languages have a preprocessor as extensive as C. |
+| 9    | Code Clarity<br>Predictable Execution | Yes | Not all languages can control pointers like C can.<br>OOP or weakly typed languages still have them implicitly, but are used differently. |
+| 10   | Language Compliance | No | C just so happens to have great compilers compared to other languages.<br>Any popular enough language has a static analyzer |
 
 ## Sources
 
