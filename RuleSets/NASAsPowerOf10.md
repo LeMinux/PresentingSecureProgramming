@@ -1,6 +1,6 @@
 Note that I am not quite done with this.
 It is at least good enough for me to make public though.
-Vim > word doc.
+A little easter egg for those who look this is made entirely in vim.
 
 # NASA's Power of 10
 
@@ -95,6 +95,7 @@ Loop count is 7
 Loop count is 8
 Out of loop.
 ```
+
 This is a silly example, but it's to show that deep breaks are problematic.
 From what I read though, a single break per loop is acceptable in certain circumstances, but continue is not allowed.
 Continue is more so banned since it is a little unecessary in that the next iteration will continue if it reaches the bottom of the loop anyway.
@@ -132,7 +133,7 @@ There was good reason for the hatred, and with structured programming becoming t
 Now that some time has past, with structured programming and OOP as the standard, goto kind of... just exists.
 Although I suppose Linux kernel devs could argue some points with their do-while goto loops.
 Now adays goto has this one very special specific use case to jump to error handling.
-MEM12-C explains how this could be used (MEM12-C)[https://wiki.sei.cmu.edu/confluence/display/c/MEM12-C.+Consider+using+a+goto+chain+when+leaving+a+function+on+error+when+using+and+releasing+resources]
+MEM12-C explains how this could be used [MEM12-C](https://wiki.sei.cmu.edu/confluence/display/c/MEM12-C.+Consider+using+a+goto+chain+when+leaving+a+function+on+error+when+using+and+releasing+resources)
 This is touted as the best use case for goto in trying to increase readability.
 It is of course still possible to avoid goto for a more structured approach, but this can be less readable.
 If we want to abide by the rule of what would be more simple, there could be an argument to use goto specifically for this.
@@ -231,6 +232,7 @@ int myStringLength(const char* string){
     return count;
 }
 ```
+
 You could then use this to verify that your strings are of a certain length.
 
 #### General Cases
@@ -245,6 +247,7 @@ Cases such as
 - waiting for an event
 - Waiting for the return value.
 - Retrying a failed task.
+  
 Technically a bound can be placed on everything through the scientific power of picking a number.
 This is a valid option to comply with this rule
 For example, apt when prompting for Y/N to upgrade will only give you one try.
@@ -278,10 +281,14 @@ Semaphores and locks should also be avoided, but if they must be used the lockin
 The only exception they mention is a produce-consumer style of locking.
 This is an attempt to prevent dead-lock where threads are waiting for a lock to be released, but they hold the lock other processes need.
 Below I will provide some sources that explain this better than I can.
-(Geek for Geeks IPC)[https://www.geeksforgeeks.org/inter-process-communication-ipc/]
-(Wikipedia IPC)[https://en.wikipedia.org/wiki/Inter-process_communication]
-(Geek for Geeks Semaphores)[https://www.geeksforgeeks.org/semaphores-in-process-synchronization/]
-(StackOverFlow locks, mutex, and semaphores)[https://stackoverflow.com/questions/2332765/what-is-the-difference-between-lock-mutex-and-semaphore]
+
+[Geek for Geeks IPC](https://www.geeksforgeeks.org/inter-process-communication-ipc/)
+
+[Wikipedia IPC](https://en.wikipedia.org/wiki/Inter-process_communication)
+
+[Geek for Geeks Semaphores](https://www.geeksforgeeks.org/semaphores-in-process-synchronization/)
+
+[StackOverFlow locks, mutex, and semaphores](https://stackoverflow.com/questions/2332765/what-is-the-difference-between-lock-mutex-and-semaphore)
 
 #### Task Timeout
 
@@ -289,7 +296,7 @@ Task time outs is setting a time limit that the program will wait for a task to 
 This is useful to have on servers, so that a long running task can not be abused to create a DDoS attack.
 Regex is one example.
 There are some "evil regex" patterns that can act as a Denial of Service.
-This Wikipedia article explains about it (Wikipedia ReDoS)[https://en.wikipedia.org/wiki/ReDoS].
+This Wikipedia article explains about it [Wikipedia ReDoS](https://en.wikipedia.org/wiki/ReDoS).
 There may also be an asynchronous task like a network connection that is taking too long, so the program gives up and returns an error.
 
 ### 3. Do not use dynamic memory after initialization
@@ -343,7 +350,7 @@ Explicit dynamic memory calls are these functions
 - alloca()*
 - sbrk()
 
-\*alloca uses the stack, but still should not be used. The man page explains (alloca() man page)[https://www.man7.org/linux/man-pages/man3/alloca.3.html].
+\*alloca uses the stack, but still should not be used. The man page explains [alloca() man page](https://www.man7.org/linux/man-pages/man3/alloca.3.html).
 
 Some ways to imitate dynamic behavior
 1. Set maximum bounds for input
@@ -597,6 +604,7 @@ for(int x = 0; x < 10; ++x){
     /* x is shadowed here */
 }
 ```
+
 In the example above this would result in the loop executing 10 times instead of 0 times.
 Shadowing can result in unexpected behavior since it won't refer to the variable you think.
 one way to avoid shadowing is to create explicit names.
@@ -610,7 +618,7 @@ NASA says these are functions that do not touch global data, avoid storing local
 It is basically a function that strictly takes what it is given and will give the same result each time with identical arguments.
 This can be aided with the use of const and enums to declare that this is something that won't be modified.
 Const especially should be used on reference types whenever possible.
-This wikipedia article explains a little more (Pure Functions Wikipedia)[https://en.wikipedia.org/wiki/Pure_function]
+This wikipedia article explains a little more [Pure Functions Wikipedia](https://en.wikipedia.org/wiki/Pure_function)
 
 ### 7. Check all return values of non-void functions and validate passed in parameters
 
@@ -787,6 +795,7 @@ A more simple way would be to conduct the side effect before the macro.
 ++x;
 SQUARE(x);
 ```
+
 Other ways include using inline functions over a function like macro to enforce type and remove side effects.
 The big picture here is that this rule specifies **simple** macros.
 If a macro would be better off as a function, make a function instead.
@@ -880,7 +889,8 @@ It would look something like this.
 
 REPEAT_3(PRINT, "Hello") /* usage */
 ```
-This StackOverFlow post explains in more detail (recursive preprocessor to create a while loop)[https://stackoverflow.com/questions/319328/how-to-write-a-while-loop-with-the-c-preprocessor/10542793#10542793].
+
+This StackOverFlow post explains in more detail [recursive preprocessor to create a while loop](https://stackoverflow.com/questions/319328/how-to-write-a-while-loop-with-the-c-preprocessor/10542793#10542793).
 
 #### Variadic Macros
 
@@ -895,7 +905,8 @@ It's usage tends to lead to macro chaining like this.
 #define APPLYTWOJOIN_6(f,j,e,t,v,...)  f(t,v) ESC j APPLYTWOJOIN_4(f,j,e,__VA_ARGS__)
 #define APPLYTWOJOIN_8(f,j,e,t,v,...)  f(t,v) ESC j APPLYTWOJOIN_6(f,j,e,__VA_ARGS__)
 ```
-This was found at this StackOverFlow post (variadic macro for function defining)[https://stackoverflow.com/questions/48284705/how-to-use-variadic-macro-arguments-in-both-a-function-definition-and-a-function].
+
+This was found at this StackOverFlow post [variadic macro for function defining](https://stackoverflow.com/questions/48284705/how-to-use-variadic-macro-arguments-in-both-a-function-definition-and-a-function).
 Their usage also tends to lead to unreadable code like with recursive calling macros.
 
 #### Variadic Functions
@@ -1032,13 +1043,14 @@ Some other GCC options include
 -Wstrict-prototypes
 -Wmissing-prototypes
 ```
+
 There is also a built in ASAN in gcc by using `-fsanitize=address`.
 This is a very helpful flag for catching those pesky buffer overflows or off by one errors.
 Note that you should not ship out your code with ASAN enabled since it is for debugging memory and adds overhead.
 In recent development, GCC now comes with a static analyzer with the `-fanalyzer` option family if gcc is configured to use it.
 This option looks at program flow, and tries to find bugs like double frees and leaked open files.
 It can even help with rule 1 wth the `-fanalyzer-too-complex` flag which warns the user if the internal limit is reached.
-For a list of static analyzers Spinroot shows some here (Spinroot Static Analyzers for C)[https://spinroot.com/static/].
+For a list of static analyzers Spinroot shows some here [Spinroot Static Analyzers for C](https://spinroot.com/static/).
 
 #### Java
 
@@ -1068,7 +1080,7 @@ For weakly typed languages it would be more beneficial to use a static analyzer 
 
 #### Other Languages
 
-This wikipedia article shows some static code analyzers available (Wikipedia list of static code analysis)[https://en.wikipedia.org/wiki/List_of_tools_for_static_code_analysis]
+This wikipedia article shows some static code analyzers available [Wikipedia list of static code analysis](https://en.wikipedia.org/wiki/List_of_tools_for_static_code_analysis)
 It is not an extensive list of all that is available, but as long as a language is not dead it probably has a static analyzer.
 Even more obscure languages like R have an option to use, and apparently there is a talk about static code analysis for APL.
 Why anyone would use these languages in a serious context who knows, but this is just to show a point that there are options.
