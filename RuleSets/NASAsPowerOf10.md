@@ -1,3 +1,7 @@
+Note that I am not quite done with this.
+It is at least good enough for me to make public though.
+Vim > word doc.
+
 # NASA's Power of 10
 
 ## Description
