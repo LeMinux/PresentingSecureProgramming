@@ -1,5 +1,8 @@
 <talk about files on Linux>
 <talk about file descriptor>
+<talk about race conditions esspecially when checking for files>
+    <it is better to let the OS do the magic>
+    <checking for existence then opening can be a race condition>
 
 <talk about /proc>
 
