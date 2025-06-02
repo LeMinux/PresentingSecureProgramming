@@ -8,10 +8,10 @@ A little easter egg for those who look at this is that this is made entirely in 
 
 NASA's Power of 10 is a very powerful guideline with 10 simple rules tailored to developing safety critical software.
 This is software where failure can result in death, harm the environment, or lose critical equipment.
-These guidelines have this in mind, but nothing says they are soley for these scenarios.
+These guidelines have this in mind, but nothing says they are solely for these scenarios.
 In a broad sense, it is software where people depend on correct implementation to avoid catastrophe.
 One example is TigerBeetle using these rules for online transaction processing for businesses.
-Businesses may not be considered saftey critical, but they have business critical components that must stay operable to avoid heavy loses.
+Businesses may not be considered safety critical, but they have business critical components that must stay operable to avoid heavy loses.
 For these cases that require a focus on secure programming, NASA's Power of 10 is fantastic guideline.
 However, one big caveat is that NASA's Power of 10 is **NOT** all encompassing on secure programming.
 Its purpose is to act as 10 simple, memorable, and effective guidelines to help in creating reliable and robust code.
@@ -30,10 +30,10 @@ These guidelines assume the reader already has a pretty good understanding on wh
 It assumes the reader knows about embedded systems, the importance of analysis, and working with a team of programmers.
 To keep these rules short and understandable NASA can not explain everything.
 To help fill in a gap I thought existed I wanted to create a document on what a normal programmer would think.
-Albeit a programmers who really likes secure programing.
+Albeit a programmers who really likes secure programming.
 I wanted take a stance that will focus more on how these rules can be applied in general programming.
 This will of course mean a more relaxed stance on some rules for the sake of being more applicable, but it does not mean the rule can not be implemented.
-If anything it would be an arguement about practicality rather than feasibility.
+If anything it would be an argument about practicality rather than feasibility.
 Taking a wider approach does allow a conjuring on how these rules would apply to situations not explained in these guidelines.
 
 I recommend that you read the sources to gain more incite into NASA's reasoning.
@@ -98,7 +98,7 @@ Out of loop.
 
 This is a silly example, but it's to show that deep breaks are problematic.
 From what I read though, a single break per loop is acceptable in certain circumstances, but continue is not allowed.
-Continue is more so banned since it is a little unecessary in that the next iteration will continue if it reaches the bottom of the loop anyway.
+Continue is more so banned since it is a little unnecessary in that the next iteration will continue if it reaches the bottom of the loop anyway.
 In some cases it is more problematic since continue is skipping everything below it like in the example above where it skips printing 6.
 Break on the other hand does have a use where some condition can terminate the loop early, but a loop should only have one early exit point.
 It can be used sparingly in the right circumstances such as finding a specific value in an array, or calling a function in a standard loop that can return an error.
@@ -107,14 +107,14 @@ In cases where a loop can have two outcomes, or break offers a more simple clear
 
 #### Recursion
 
-It is true that recursion can create small easily readable functions, but their hidden cost is too much of a risk for saftey critical systems.
+It is true that recursion can create small easily readable functions, but their hidden cost is too much of a risk for safety critical systems.
 What I like to call the recursion tax, where each method call adds its parameters\*, return pointer, and frame to the stack, can pass the bounds of the stack if the tax becomes too much.
 Your testing could show it is within bounds, but what happens during unexpected behavior?
 In this case all you really know is it will either reach the base case or blow out the stack.
 There are ways to make recursion safer such as limiting the number of calls or adding stack overflow checks.
 There is even tail recursion optimization which helps in reducing most stack overflows, but it does not get rid of it entirely.
 In the eyes of safety there is no need to introduce such risk if any recursive implementation can be done iteratively.
-This way bounds can be verified by static analyzers analyizing an acyclic function call graph, and the common worry of run away code is handled by rule 2.
+This way bounds can be verified by static analyzers analyzing an acyclic function call graph, and the common worry of run away code is handled by rule 2.
 The absence of recursion also keeps thread stacks with in bounds.
 Since threads reside within the same memory space it could be possible for an unchecked recursive method to clobber another thread stack.
 Now of course just because you avoid recursion does not make you immune to stack overflows.
@@ -140,7 +140,7 @@ If we want to abide by the rule of what would be more simple, there could be an 
 It could also be argued that goto is not needed and to stick to standard flow to avoid bringing issues related to goto.
 Without an official statement I would assume NASA still completely bans goto.
 For general programming I would advise against using goto.
-It is not needed 99% of the time, but it could be useful that incrediably rare 1%.
+It is not needed 99% of the time, but it could be useful that incredibly rare 1%.
 
 #### Setjmp() LongJmp()
 
@@ -171,7 +171,7 @@ This was probably the original intention since the length of a constant would no
 Although what would be the proper handling when dynamic length was needed?
 Since the length obtained is not fixed would it needed to be along side a fixed bound as well?
 Something like `for(int i = 0; i < (length of array) && i < (max upper bound); i++){. . .}`?
-This seems unecessary though as would rule 5 and rule 7 check for this?
+This seems unnecessary though as would rule 5 and rule 7 check for this?
 Luckily the JPL Coding Standard clarifies the rule by saying it shall be possible for a static analyzer to affirm the bound.
 This is to say if you can obtain the exact number of iterations as an integer it is okay.
 An explicit quote from the JPL Document says
@@ -267,7 +267,7 @@ It may make sense to add a bound it may not make sense.
 
 #### Async & Sync
 
-This topic is relavent to this rule since this is talking about predictable execution of multiple processes.
+This topic is relevant to this rule since this is talking about predictable execution of multiple processes.
 I do not have much knowledge in this for embedded systems, so I will mostly be quoting NASA.
 NASA's power of 10 does not say anything about synchronous or asynchronous behavior.
 Handling this kind of behavior is instead talked about in the JPL Coding Standard.
@@ -315,7 +315,7 @@ There are also countless issues related to the HEAP such as
 - unpredictable behavior of garbage collectors
 - unpredictable behavior of memory allocators
 
-Even NULL checks after a malloc does not gaurentee that the malloc was successful.
+Even NULL checks after a malloc does not guarantee that the malloc was successful.
 Linux's malloc() is optimistic and only allocates the memory once it is going to be used.
 This can result in a crash from using memory thought to be available.
 For these reasons dynamic memory is banned, but it is not banned entirely.
@@ -326,10 +326,10 @@ Here the program can figure out how much memory it would need in total and make 
 In NASA's words they force the application to live in a fixed, pre-allocated area of memory.
 Essentially they avoid the issue with the HEAP by making a single large allocation and then never freeing it.
 This is what the NASA Power of 10 Document implies at least.
-In the JPL document it says "after task initalization" which I believe refers to threads.
+In the JPL document it says "after task initialization" which I believe refers to threads.
 This would mean that the threads created would not be able to use dynamic memory.
 What I am more confused about though is what does this mean for the task that is initializing the threads?
-Is main the only thread allowed to make other tasks, or since main is thread 0 allocation for all threads is done at its initalization?
+Is main the only thread allowed to make other tasks, or since main is thread 0 allocation for all threads is done at its initialization?
 I am not entirely sure about this, but a safe bet is to initialize everything at program startup.
 
 This would also mean some functions that return dynamic memory like strdup().
@@ -370,7 +370,7 @@ Each extra allocation is another risk so handle it properly.
 The principle of this rule is to treat your functions as small logical units.
 Longer "everything" functions are often a sign that logic is poorly thought out, or that stratification is needed.
 Not only is it harder to debug a large function because of its size, but it also much slower to understand in the first place.
-Having to scroll down or jjjjjjjj/kkkkk to find far seaparated code can feel like walking into many rooms and forgetting why you are there in the first place.
+Having to scroll down or jjjjjjjj/kkkkk to find far separated code can feel like walking into many rooms and forgetting why you are there in the first place.
 So you jump back to where you had a foot hold of understanding because "ahh it was that variable I am concerned about".
 Then you scroll too far down trying to find where you are stuck.
 Creating smaller functions keeps the logic within one screen, so it is much easier to audit and find mistakes.
@@ -486,10 +486,10 @@ if(booleanFunction(index, other_variable, some_other_thing)){
 
 #### Function Parameters
 
-Another part of this rule is a prefered maximum of 6 parameters.
+Another part of this rule is a preferred maximum of 6 parameters.
 Having too many parameters can harm clarity not just for the function itself, but also for the callee function needing all those parameters.
 Personally for me, having more than 4 parameters is too much.
-There is also a more technical reason that the 7th and beyond parameters are placed on the stack instead of a register, so their values could get courrupted indirectly.
+There is also a more technical reason that the 7th and beyond parameters are placed on the stack instead of a register, so their values could get corrupted indirectly.
 This is more of a side reason though, and the main reason is for improved clarity.
 
 #### Column Limits
@@ -576,7 +576,7 @@ This is because 32-bit systems have pointers that are 4 bytes while 64-bit syste
 
 In C this is the best way to accomplish data hiding.
 If a variable is out of scope then it can't be modified or referenced.
-This has the benefit of reducing what can be courrupted and makes debugging easier.
+This has the benefit of reducing what can be corrupted and makes debugging easier.
 For the most part, this is as simple as declaring the variable at the point of first use for automatic storage variables.
 However, C has some other neat features that makes this rule slightly more complicated.
 
@@ -664,7 +664,7 @@ So many vulnerabilities occur from simply not checking parameters especially in 
 Public functions are well. . . public, so they can accept any kind of input from anywhere.
 Therefore, it is important to make sure that public functions can actually use the parameters it was given.
 Private functions should also validate their parameters although depending on the context assertions can be used.
-In either case, the principle of creating total functions is prefered where functions can handle any input.
+In either case, the principle of creating total functions is preferred where functions can handle any input.
 This means creating functions that can handle any kind of input.
 It does not matter whether the parameters are valid or invalid the function will handle it accordingly.
 
@@ -701,7 +701,7 @@ MISRA C 2004 rule 20.3 mentions some ways of conducting validation
 
 #### Try/Catch
 
-The way try/catch ueses this rule is. . . interesting.
+The way try/catch uses this rule is. . . interesting.
 I do not expect NASA to use try/catch as it violates creating an explicit clear control flow specified in rule 1 and violates predictable execution.
 In fact, goto and setjmp/longjmp are banned in rule 1, and they are the only two mechanisms that could implement a pseduo exception system in C.
 All this rule is saying is to check the return value of the function and to check the validity of parameters.
@@ -725,11 +725,11 @@ The way C handles errors allows for errors to be silently ignored if not checked
 Hence why it is a feature that exceptions will bubble up to what ever can handle it, and if it reaches the very top the program crashes.
 Although it is not like C can not do this.
 NASA mentions it themselves that error values must be checked to return it up the call chain in effect creating this bubbling effect.
-It is just more clean looking in higher level langauges.
+It is just more clean looking in higher level languages.
 The more nuanced part of try/catch is the how it applies to checking the return value of functions.
 An exception is not exactly a return value.
 It is an indication of error that so happens to act as a return value when it occurs.
-This is where the nuance in the implementation of this rule exsits because how it is treated as a return is dependent on the language's main philosophy.
+This is where the nuance in the implementation of this rule exists because how it is treated as a return is dependent on the language's main philosophy.
 
 #### Easier to Ask For Forgiveness than Permission (EAFP)
 
@@ -738,7 +738,7 @@ The thinking is more like "oopsie can't do that lets try this instead".
 Python is one such language.
 try/catch is used as the control flow mechanism acting more like if/else, and tends to use the try/catch itself as lazy validation.
 In a way exceptions are treated as a return, so it is part of control flow.
-This kind of philosophy would not pair well with saftey critical systems as it is hoping to encounter an error first before handling it.
+This kind of philosophy would not pair well with safety critical systems as it is hoping to encounter an error first before handling it.
 Additionally C is not going give you forgiveness.
 
 Example of EAFP:
@@ -754,9 +754,9 @@ except KeyError:
 Languages that have a philosophy of LBYL act to prevent an exception happening in the first place.
 This may be because there is no exception handling system like in C and Go, or performance cost when an exception occurs is a larger concern like in Java or C++.
 It typically handles expected common control flow rather than catching a commonly expected exception.
-Simple if statements are prefered for simple validation rather than exceptions.
-More complicated validation could encapsualte the effort into a try if the validation is known to be robust.
-It reserves exceptions for cases where it is truly exceptional that expected behavior falterd, or when an exception is outside the programmer's control.
+Simple if statements are preferred for simple validation rather than exceptions.
+More complicated validation could encapsulate the effort into a try if the validation is known to be robust.
+It reserves exceptions for cases where it is truly exceptional that expected behavior faltered, or when an exception is outside the programmer's control.
 
 Example of LBYL:
 ```
@@ -767,7 +767,7 @@ if "key" in dict_:
 #### How Does This Rule Affect Try/Catch
 
 In reality a mix of both philosophies will be used in coding.
-It is true that LBYL can create race conditions, so EAFP is prefered sometimes.
+It is true that LBYL can create race conditions, so EAFP is preferred sometimes.
 A good example is opening a file.
 It is better to simply try and open the file rather than test if it exists then open it as that exposes a race condition.
 In C this would be an fopen/open call and checking directly afterwards if it is NULL/-1.
@@ -792,12 +792,14 @@ Yes the exception tells me there is a fire, but what in the control flow trigger
 It could be several function calls deep or masked within nested operations like `array1[array2[x]]`.
 This is why try blocks should be confined to what can actually throw sparks.
 
+//program encased ni try 
+
 ### 8. The preprocessor should be left for simple tasks like includes, simple macros, and header guards
 
 In C, the preprocessor is a tool that allows the code to be altered just before compiling.
-It is essentially a text substitution tool capable of simplifing tasks, but also capable of creating stupidly unreadable code.
+It is essentially a text substitution tool capable of simplifying tasks, but also capable of creating stupidly unreadable code.
 It is a very powerful obfuscation tool that if used haphazardly can harm readability for humans, tool based checkers, and debuggers.
-With this obfuscation, it is important that the macro itself is syntatically valid which would mean encasing the body in parenthesis or curly brackets.
+With this obfuscation, it is important that the macro itself is syntactically valid which would mean encasing the body in parenthesis or curly brackets.
 Within the macro itself it should not hide pointer dereferencing or declarations.
 The Macros themselves should reside only in the header file and not in the middle of scope or functions.
 
@@ -845,7 +847,7 @@ Below are things the preprocessor should not be used for.
 /* the following are NOT compliant */
 #define int32_t long          /* use typedef instead */
 #define STARTIF if(           /* unbalanced () and language redefinition */
-#define CAT PI                /* not syntatically valid */
+#define CAT PI                /* not syntactically valid */
 #define DEREF(p) ((*(p)) + 2) /* dereferencing */
 ```
 
@@ -908,9 +910,9 @@ This is because they create different versions of code that can make it difficul
 NASA gives an example of 10 conditional compilations creating 2^10 possible versions which would be 1,024 things to test.
 Imagine having to debug 1,024 different versions each with a different source code.
 It is not like static analysis could help because it would not know what would be compiled.
-Then there has to be a consideration on if changes in one verison will affect all the other versions.
+Then there has to be a consideration on if changes in one version will affect all the other versions.
 Very quickly this becomes a mess to test and understand.
-From what I have read the most prefered way to handle different platform is to use separate files, and to link according to the environment.
+From what I have read the most preferred way to handle different platform is to use separate files, and to link according to the environment.
 It may not be possible to avoid the dangers of conditional compilation though.
 If you must use conditional compilation beyond the standard header guard, all `#else, #elif, and #endif` must reside in the same file as their `#if, ifndef, or #ifdef` as per rule 23 in the JPL Standard.
 
@@ -967,9 +969,9 @@ It just turns the given parameter into a string, so it doesn't allow for sneaky 
 
 The thing about Macros is that they are not recursive.
 Once the macro expands it will not expand into itself again if it was directly from the previous pass.
-This is refered to as `painted blue`.
-People have gotten around it by defering one extra step so the macro expands into another expansion that calls the desired macro.
-In effect it is basically a hack to get around the preprocessor and it creates incrediably unreadable code.
+This is refereed to as `painted blue`.
+People have gotten around it by deferring one extra step so the macro expands into another expansion that calls the desired macro.
+In effect it is basically a hack to get around the preprocessor and it creates incredibly unreadable code.
 It would look something like this.
 ```
 #define EVAL1(x) x
@@ -1025,7 +1027,7 @@ As an extension, this means declaration of pointers should have no more than two
 I guess the reason for JPL altering the rule is be less restrictive and allow direct usage of 2D arrays and pointers to pointers.
 Pointers are a large data type, so NASA may have wanted to reduce stack usage by decreasing holding value pointers.
 Most of the time though you will only ever need two levels of indirection, but programming is programming and there are exceptions with justification.
-These cases are pretty rare, so sticking to two levels is much prefered.
+These cases are pretty rare, so sticking to two levels is much preferred.
 Below are some examples from MISRA C advisory rule 17.5.
 ```
 int8_t * s1;    /* compliant */
@@ -1096,7 +1098,7 @@ or depending on intention
 #### Pointer Arithmetic
 
 Pointer arithmetic and comparison shall be limited to just array objects and within the bounds of said array object.
-The most prefered arithmetic method is using the `[]` operator to access elements.
+The most preferred arithmetic method is using the `[]` operator to access elements.
 It is explicit in saying it is done on an array and at this index.
 The index should be validated that is it within bounds, and that overflows have not occured.
 You do not need to account for the size of the elements when indexing since it is handled automatically.
@@ -1182,24 +1184,24 @@ Why anyone would use these languages in a serious context who knows, but this is
 Hopefully now you understand what NASA's Power of 10 means.
 It is not just a security guideline, but a mindset to follow.
 TigerBeetle is not wrong in stating that these rules will change how you code forever.
-You are more concious in how you code for yourself and others.
+You are more conscious in how you code for yourself and others.
 You appreciate what it means to make robust code because it is not just about handling incorrect data.
 It is having a plan for whatever can go wrong.
 You try your very best to make code that is as correct as possible.
 NASA knows that these rules may seem draconian, especially with rules like 3 and 1, but remember these guidelines were developed where lives depend on correctness.
 Applications like planes, nuclear power plants, cars, or medical machines have people's lives at risk.
-You are right to say not every situation is saftey critical and does not require these rules.
-You are right to say that it is impossible for some languges to follow every rule here.
+You are right to say not every situation is safety critical and does not require these rules.
+You are right to say that it is impossible for some languages to follow every rule here.
 However, maybe the question is not if you can implement every rule, but what rules you can implement.
 Yes, these rules are for C, but this should not block you from taking another look and finding out what you can do.
-To show this, the table below will visual what catagory a rule releates to, and the reason as to why or why not the rule is C specific.
+To show this, the table below will visual what category a rule relates to, and the reason as to why or why not the rule is C specific.
 
-| Rule | Catagory |  C Specific | Reason       |
+| Rule | Category |  C Specific | Reason       |
 | :--: | :------: | :---------: | :----------: |
 | 1    | Code Clarity<br>Predictable Execution | No | Control flow is created by the programmer. |
 | 2    | Predictable Execution | No | Any loop can be set to have bounds. |
 | 3    | Predictable Execution | Yes | C and C++ manually manage memory.<br> Garbage collected languages do not have as much control. |
-| 4    | Code Clarity | No | Programmers make large functons. |
+| 4    | Code Clarity | No | Programmers make large functions. |
 | 5    | Defensive Coding | No | Assertions can be created in any language. |
 | 6    | Defensive Coding<br>Clear code | No  | Any language with scope can declare at lowest scope. |
 | 7    | Defensive Coding | No | Any language with functions and returns can check them. |
@@ -1219,7 +1221,7 @@ To show this, the table below will visual what catagory a rule releates to, and 
 
 [MISRA C 2004](https://caxapa.ru/thumbs/468328/misra-c-2004.pdf)
 
-[Guidelines on Software for Use in Nuclear Power Plant Saftey Systems](https://www.nrc.gov/docs/ML0634/ML063470583.pdf)
+[Guidelines on Software for Use in Nuclear Power Plant Safety Systems](https://www.nrc.gov/docs/ML0634/ML063470583.pdf)
 
 [Tiger Beetle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md)
 
