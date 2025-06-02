@@ -1,6 +1,6 @@
 Note that I am not quite done with this.
 It is at least good enough for me to make public though.
-A little easter egg for those who look this is made entirely in vim.
+A little easter egg for those who look at this is that this is made entirely in vim.
 
 # NASA's Power of 10
 
@@ -514,7 +514,6 @@ It is the best way a programmer can remain sane that their code is as correct as
 
 So where do you use assertions?
 They are used to verify the principle of designing by contract.
-This would mean
 - verify pre-conditions of functions
 - verify post-conditions of functions
 - verify loop invariants
@@ -530,7 +529,7 @@ Do not use assertions on things you can't say should **ALWAYS** be true or false
 This is because assertions are removable for performance reasons.
 The idea is that during development the assertion never triggered, so it should be safe to remove.
 An argument can be made if assertions should be removed in the first place since debugging never stops in programming.
-For general cases assertions are typically removed for user convenience, but safety critical systems would want to keep them.
+Typically assertions are removed for user convenience in non-safety critical applications, but safety critical systems may want to keep them.
 If you want to modify the behavior of the default assertion, or don't want them to be removable you can create your own.
 
 This brings up a question on how to write an assertion.
@@ -539,6 +538,19 @@ Assertions should
 - Contain no side effects
 - Have a recovery action on failure
 - Be proven that it can fail or hold
+
+```
+assert(a - b) /* not a boolean expression */
+
+assert(++x > 10) /* assertion changes the value of x */
+
+if(my_assert(some_pointer == NULL) == true ){
+    x = 5;
+} /* no recovery taken */
+
+int sum = a + b;
+assert(sum - b == a) /* a + b - b  == a will always be true even in overflows */
+```
 
 NASA defines an assertion like this
 ```
@@ -555,8 +567,8 @@ if (!c_assert(p >= 0) == true) {
 ```
 This way NASA is able to change the logging function if they need and it returns an error.
 
-They also mention static assertions which would depend on what compiled the program.
-Something like `c_assert( 1 / ( 4 – sizeof(void *));`.
+They also mention static assertions which are assertions that are checked at compile time.
+NASA gives this as an example `c_assert( 1 / ( 4 – sizeof(void *));`.
 This will trigger a divide by zero warning if the compiler is using a 32-bit machine.
 This is because 32-bit systems have pointers that are 4 bytes while 64-bit systems use 8 bytes.
 
@@ -565,19 +577,20 @@ This is because 32-bit systems have pointers that are 4 bytes while 64-bit syste
 In C this is the best way to accomplish data hiding.
 If a variable is out of scope then it can't be modified or referenced.
 This has the benefit of reducing what can be courrupted and makes debugging easier.
-For the most part, this is as simple as declaring and/or defining the variable at the point of first use.
+For the most part, this is as simple as declaring the variable at the point of first use for automatic storage variables.
 However, C has some other neat features that makes this rule slightly more complicated.
 
 #### Static
+
 Typically `static` is know for declaring a variable that persists within a function.
 For the most part this should be avoided as it is an easy way to create side effects.
-However, static can be used on a function to specify that its scope is within the file.
+However, static in C can be used on a function to specify that its scope is within the file.
 More specifically it is indicating internal linkage.
 It is kind of like creating a private method since it will be usable only in that source file.
 These type of functions should **NOT** be declared in the header file, and they should reside in just the source file.
 Defining a static method in the header file would give each file that includes the header a separate function definition.
 It defeats the purpose of specifying internal linkage, and really is not necessary.
-Although I suppose you could try to make your very own Java Interface in C if you really wanted to.
+Although If you were crazy you could try to make your very own Java Interface in C if you really wanted to.
 
 Example of defining a static method
 ```
@@ -587,7 +600,8 @@ static void someFunction(){
 ```
 
 #### Extern
-The opposite of `static` would be `extern`.
+
+The opposite of `static` in C would be `extern`.
 This specifies external linkage.
 extern is like making a global object that is declared in the header file that later gets defined in the source file to be passed around.
 It is a way to extend the visibility to many source files.
@@ -597,6 +611,7 @@ NASA says if two extern variables have the same name, but different types it can
 Just make sure that extern objects are unique.
 
 #### Shadowing and Reuse
+
 Other sub-rules included are discouraging shadowing variables and variable reuse for different unrelated purposes.
 ```
 int x = 10;
@@ -613,9 +628,10 @@ The rule about variable reuse is to create better readability.
 Using a length variable for many unrelated purposes can make debugging more difficult as you then need to find which effectively different length variable is the issue.
 
 #### Pure Functions
+
 Within this rule is a preference for `pure functions`.
 NASA says these are functions that do not touch global data, avoid storing local state, and do not modify data declared in the calling function indirectly.
-It is basically a function that strictly takes what it is given and will give the same result each time with identical arguments.
+It is basically a function that strictly takes what it is given and will give the same result each time when given identical arguments.
 This can be aided with the use of const and enums to declare that this is something that won't be modified.
 Const especially should be used on reference types whenever possible.
 This wikipedia article explains a little more [Pure Functions Wikipedia](https://en.wikipedia.org/wiki/Pure_function)
@@ -624,7 +640,7 @@ This wikipedia article explains a little more [Pure Functions Wikipedia](https:/
 
 This rule is the flip side of rule 5.
 Just like rule 5, this rule is critical to defensive coding, and can be implemented in any language.
-While rule 5 is for checking if programmers are making errors, validation checks if the state of the program is usable.
+While rule 5 is for checking if programmers are making errors, validation checks if the data given has errors.
 There is an expectation that invalid data can be given, or it makes sense to check for invalid data and return an error.
 Essentially this rule helps to create robust programs that can handle most situations.
 
@@ -635,40 +651,21 @@ The only case where the return value would not matter is if the case of error an
 NASA gives printf and close as an example.
 In such matters, casting to void is an acceptable way to explicitly express this `(void)printf("%s", "Hi")`.
 This way others know the return value is purposely ignored, but also allows for questioning if it should be ignored.
-In most cases though the return value should be checked because it is the function's way of communication something went wrong.
+In most cases though the return value should be checked because it is main way C communicates something went wrong.
 This is especially true if the function needs to propagate the error up the call chain.
 This type of behavior would also extend into programmer made functions.
 As the function is being created there is a thought about what can go wrong with each step.
 Since you are checking for error status you have an incentive to return an error status.
-
-#### Try/Catch
-
-While this rule is meant for status checking and handling, try/catch exceptions kinda fall into here just not in the same way.
-try/catch is there to catch exceptional errors that could not be accounted for.
-At least it is for most languages.
-Languages like Python actually encourage it extensively because that slow language some how made try/catch fast.
-In most cases though, use of try/catch should be avoided.
-This is because it can obfuscate control flow, hinder performance, or create a bad state.
-Don't use try/catch as a way to lazily forgo status checking, and don't use try/catch as a substitute for control flow.
-If a condition can be checked that would prevent an exception in the first place that is more preferable.
-Instead of encountering the error and then trying to fix it why not just handle the error before hand.
-Of course it may not always be possible to avoid try/catch if you can't figure out an error before hand.
-In these cases it may be useful to bubble up the exception to something that can handle it, or handle it yourself.
-Be carful about the what exceptions you claim to handle.
-Too specific and the program may miss a more general exception and continue in a bad state.
-Too broad and the program may just not handle it properly.
-In a way the rule about casting void if failure and success results in the same execution can apply here with a little variation.
-You don't want to risk swallowing a bubbled up exception, so if the result of an exception getting caught or not is the same don't catch that exception.
-Essentially just catch exceptions you can control, or simply just log and exit.
 
 #### Validating Parameters
 
 Validating parameters is one of the most important rule to have in any security focused guideline.
 So many vulnerabilities occur from simply not checking parameters especially in public functions.
 Public functions are well. . . public, so they can accept any kind of input from anywhere.
-Therefore, it is important to make sure the public function can actually use the parameters it was given.
+Therefore, it is important to make sure that public functions can actually use the parameters it was given.
 Private functions should also validate their parameters although depending on the context assertions can be used.
 In either case, the principle of creating total functions is prefered where functions can handle any input.
+This means creating functions that can handle any kind of input.
 It does not matter whether the parameters are valid or invalid the function will handle it accordingly.
 
 Example of validating parameters using the third example from rule2.
@@ -687,21 +684,113 @@ char* charSearch(const char* string, char needle, int size){
 ```
 
 However, you don't always create the functions.
-Sometimes you are using a provided function that may not do validation.
+Sometimes you are using a provided function that does not conduct validation.
 NASA gives the example of strlen(0) and strncat(str1, str2, -1).
-Here undefined behavior can occur.
 In these cases it is applicable to check the parameters before calling the function.
-Conceptually I feel it is better to include the validation in your functions since it is more intuitive.
+Conceptually it is better to include validation in your functions since it is more intuitive for the caller.
 Functions can be thought of as interfaces.
 You plug in your values and expect some value.
 Depending on what value you get is what you'll do.
-Having to remember to check the parameters before calling can often be forgotten, and it is not expected.
+Having to remember to check the parameters before calling to ensure a valid result is not expected.
 
 MISRA C 2004 rule 20.3 mentions some ways of conducting validation
 - Check the values before calling the function.
 - Design checks into the function.
 - Produce wrapped versions of functions, that perform the checks then call the original function.
 - Demonstrate statically that the input parameters can never take invalid values.
+
+#### Try/Catch
+
+The way try/catch ueses this rule is. . . interesting.
+I do not expect NASA to use try/catch as it violates creating an explicit clear control flow specified in rule 1 and violates predictable execution.
+In fact, goto and setjmp/longjmp are banned in rule 1, and they are the only two mechanisms that could implement a pseduo exception system in C.
+All this rule is saying is to check the return value of the function and to check the validity of parameters.
+It is as simple as creating a clear line of if statement, but people did not like ifs all over their code so try/catch was created.
+The question is how does try/catch implement this rule?
+For validation it is pretty easy.
+It would functionally be the same except it just returns a more specifc exception rather than a sentinel value.
+```
+/* using modified example from above */
+int searchWrapper(String string, char needle){
+    if(string == NULL || !isalnum(needle))
+        throw new IllegalArgumentException("Null argument given")
+
+    return string.indexOf(needle)
+}
+
+```
+
+Higher level languages tend to avoid status errors because exceptions are a way to force compliance.
+The way C handles errors allows for errors to be silently ignored if not checked for hence this rule's existence.
+Hence why it is a feature that exceptions will bubble up to what ever can handle it, and if it reaches the very top the program crashes.
+Although it is not like C can not do this.
+NASA mentions it themselves that error values must be checked to return it up the call chain in effect creating this bubbling effect.
+It is just more clean looking in higher level langauges.
+The more nuanced part of try/catch is the how it applies to checking the return value of functions.
+An exception is not exactly a return value.
+It is an indication of error that so happens to act as a return value when it occurs.
+This is where the nuance in the implementation of this rule exsits because how it is treated as a return is dependent on the language's main philosophy.
+
+#### Easier to Ask For Forgiveness than Permission (EAFP)
+
+This philosophy encourages assuming you have valid behavior, but when some exception occurs to handle it.
+The thinking is more like "oopsie can't do that lets try this instead".
+Python is one such language.
+try/catch is used as the control flow mechanism acting more like if/else, and tends to use the try/catch itself as lazy validation.
+In a way exceptions are treated as a return, so it is part of control flow.
+This kind of philosophy would not pair well with saftey critical systems as it is hoping to encounter an error first before handling it.
+Additionally C is not going give you forgiveness.
+
+Example of EAFP:
+```
+try:
+    value += dict_["key"]
+except KeyError:
+    pass
+```
+
+#### Look Before You Leap (LBYL)
+
+Languages that have a philosophy of LBYL act to prevent an exception happening in the first place.
+This may be because there is no exception handling system like in C and Go, or performance cost when an exception occurs is a larger concern like in Java or C++.
+It typically handles expected common control flow rather than catching a commonly expected exception.
+Simple if statements are prefered for simple validation rather than exceptions.
+More complicated validation could encapsualte the effort into a try if the validation is known to be robust.
+It reserves exceptions for cases where it is truly exceptional that expected behavior falterd, or when an exception is outside the programmer's control.
+
+Example of LBYL:
+```
+if "key" in dict_:
+    value += dict_["key"]
+```
+
+#### How Does This Rule Affect Try/Catch
+
+In reality a mix of both philosophies will be used in coding.
+It is true that LBYL can create race conditions, so EAFP is prefered sometimes.
+A good example is opening a file.
+It is better to simply try and open the file rather than test if it exists then open it as that exposes a race condition.
+In C this would be an fopen/open call and checking directly afterwards if it is NULL/-1.
+It is not like C is strictly a LBYL language, it just handles exceptions by returns.
+Try/catch just takes out the error portion of the return.
+It puts the error handling into its own separate explicit place if it were to occur.
+This mean if the caller got their return with no exceptions it is an expected return.
+It does not mean however that it is the desired value.
+The return value could be empty, or some other expected indication of invalidity.
+As an example Java's indexOf returns -1 if it could not find what it was given.
+This means that rule 7 still applies but checking for issues is split.
+There is the side checking the expected return, and there is a side checking the exceptional return.
+Sometimes try/catch the only way to catch any kind of error because the return is always valid.
+Although, the programmer is not forced to catch an exception if they can't handle it.
+It is perfectly acceptable to just try and have the catch somewhere up above.
+Only handle exceptions that can be handled at that exact point.
+It is important to not swallow bubbled up exceptions because it can leave the program in a bad state.
+As a note, simply printing out a message is not handling an error.
+It's like pointing out the house is on fire then going back to watching TV.
+However, it is important to know what exactly is on fire.
+Yes the exception tells me there is a fire, but what in the control flow triggered it.
+It could be several function calls deep or masked within nested operations like `array1[array2[x]]`.
+This is why try blocks should be confined to what can actually throw sparks.
 
 ### 8. The preprocessor should be left for simple tasks like includes, simple macros, and header guards
 
@@ -710,8 +799,7 @@ It is essentially a text substitution tool capable of simplifing tasks, but also
 It is a very powerful obfuscation tool that if used haphazardly can harm readability for humans, tool based checkers, and debuggers.
 With this obfuscation, it is important that the macro itself is syntatically valid which would mean encasing the body in parenthesis or curly brackets.
 Within the macro itself it should not hide pointer dereferencing or declarations.
-The Macros themselves should reside only in the header file and not in the middle of blocks or functions.
-They should not be defined within a block or function, and instead defined only in the header file.
+The Macros themselves should reside only in the header file and not in the middle of scope or functions.
 
 So what exactly would be a simple macro?
 Simple can be subjective, but listed below is for sure simple.
@@ -725,20 +813,21 @@ Below can be simple, but can be complex depending on what is being done.
 - Macro expanding into an expression
 - Do while zero construct
 
-The do-while one is a bit weird, but from what I've researched it seems to try and avoid the faults of the preprocessor.
-The do-while is a way to create more complicated expressions while maintaining scope and having to insert a semi-colon at the end.
+The do-while one is a bit weird.
+From what I've researched it seems to try and avoid the faults of the preprocessor.
+It is a way to create more complicated expressions while maintaining scope and having to insert a semi-colon at the end.
 It's a little bit of a hack, but compiler optimization will remove the do while portion.
 
 shown below are some examples
 ```
 #include <stdio.h>                  /* including standard library */
 #include "MyHeader.h"               /* including programmer made header */
+#define FILE_A "filename.h"         /* string literal */
 #define PI 3.14159F                 /* Constant */
 #define XSTAL 10000000              /* Constant */
 #define CLOCK (XSTAL/16)            /* Constant expression */
 #define PLUS2(X) ((X) + 2)          /* Macro expanding to expression */
 #define INIT(value){ (value), 0, 0} /* braced initializer */
-#define FILE_A "filename.h"         /* string literal */
 #define READ_TIME_32() \
     do { \
         DISABLE_INTERRUPTS (); \
@@ -768,14 +857,14 @@ Below I will explain some of the secret powers and if they should be used.
 
 Function like macros are not banned under NASA's rule, but caution should still be used.
 In basic terms, a function like macro is defined as any macro that takes in arguments.
-They can even be used to ignore the type as long as it is expected to pass in a proper type.
+They can even be used as a way to ignore types as long as the proper type expected is passed.
 it is defined like `#define <name of macro>(<arguments>) <definition using arguments>`.
 Note that there is no space after the name and parenthesis for the arguments.
 This is because if there is a space it would create an object like macro instead.
 A few examples are below.
 ```
 #define MAX(a,b)  ((a)>(b) ? (a):(b))
-#define MIN(x,y)  ((x)>(y)) ? (x):(y))
+#define MIN(x,y)  ((x)<(y)) ? (x):(y))
 #define SQUARE(z) ((z) * (z))
 #define ADD_TWO (a, b) ((a) + (b)) /* not valid. The macro expands to (a, b) ((a) + (b))*/
 ```
@@ -788,7 +877,7 @@ However this doesn't solve other side effects like incremenation.
 Using an expression like `MAX(x++, y - 1);` in the MAX macro would result in `(x++) > (y - 1) ? (x++):(y - 1);`.
 This can result in x getting incremented twice and seemingly give the correct post-fix value if it is the max value.
 This can also lead to unspecified behavior in the SQUARE macro `SQUARE(++some_int); - > ((++some_int) * (++some_int));`.
-One way could be to use the typeof() preprocessor method, but this is GNU specific.
+One way to avoid this kind of side effect is to use the typeof() preprocessor method, but this is GNU specific.
 `#define SQUARE(x) ({ typeof (x) _x = (x); _x * _x; })`.
 A more simple way would be to conduct the side effect before the macro.
 ```
@@ -803,7 +892,7 @@ If a macro would be better off as a function, make a function instead.
 #### Conditional Compiling
 
 Conditional compilation are the statements like `#if, #ifdef, #elif, #else, #ifndef, #endif`.
-You have probably used them for header guards like so
+In C, these statements are used as header guards like so
 ```
 #ifndef <HEADER_FILE>
 #define <HEADER_FILE>
@@ -813,10 +902,17 @@ You have probably used them for header guards like so
 #endif
 ```
 
-NASA says this is about how far you should go with these conditionals, but sometimes it is unavoidable.
-If you must use them beyond the standard header guard, all `#else, #elif, and #endif` must reside in the same file as their `#if or #ifdef`, and their use should be limited.
-Adding too many conditional compilations will exponentially increase how much testing will be done because there are the number of conditonals to the power of 2.
+NASA says this is how far you should go with these conditionals.
+NASA is strictly against conditional compilation in any context, and any use of them outside of header guards will need heavy justification.
+This is because they create different versions of code that can make it difficult to test effectively.
 NASA gives an example of 10 conditional compilations creating 2^10 possible versions which would be 1,024 things to test.
+Imagine having to debug 1,024 different versions each with a different source code.
+It is not like static analysis could help because it would not know what would be compiled.
+Then there has to be a consideration on if changes in one verison will affect all the other versions.
+Very quickly this becomes a mess to test and understand.
+From what I have read the most prefered way to handle different platform is to use separate files, and to link according to the environment.
+It may not be possible to avoid the dangers of conditional compilation though.
+If you must use conditional compilation beyond the standard header guard, all `#else, #elif, and #endif` must reside in the same file as their `#if, ifndef, or #ifdef` as per rule 23 in the JPL Standard.
 
 #### Token Pasting
 
@@ -841,15 +937,15 @@ printf("%d\n", combine(x, y));
 ```
 However if you were to surround x and y in quotes it would create "x""y" which is not a valid token.
 Token pasting is sneaky little tactic that makes it hard to read what the intention is.
-It's like you read two unrelated things, but I guess it just made something.
+It's like reading two unrelated things, but some how it just made something.
 It can very quickly create hard to read code for humans and tools, so NASA bans it to keep things simple.
 
 #### Stringize
-On the other hand '#' is a stringize operator, and it turns the given parameter into a string.
+On the other hand '#' is the stringize operator, and it turns the given parameter into a string.
+It allows for a more dynamic way to create string literals.
 The assert statement in rule 5 is a good example.
 The way that it accomplishes this is by surround the argument in double quotes.
 If there are already double quotes it will escape them.
-It is as if the programmer added the double quotes, but this makes it more dynamic.
 ```
 #define TO_STRING(x) #x
 printf("1> %s\n", TO_STRING(Big Ol Cheese Blocks));
@@ -869,7 +965,7 @@ It just turns the given parameter into a string, so it doesn't allow for sneaky 
 
 #### Recursive Macro Calls
 
-The thing about Macros is that they are not actually recursive.
+The thing about Macros is that they are not recursive.
 Once the macro expands it will not expand into itself again if it was directly from the previous pass.
 This is refered to as `painted blue`.
 People have gotten around it by defering one extra step so the macro expands into another expansion that calls the desired macro.
@@ -910,26 +1006,26 @@ This was found at this StackOverFlow post [variadic macro for function defining]
 Their usage also tends to lead to unreadable code like with recursive calling macros.
 
 #### Variadic Functions
+
 Although not explicitly a preprocessor defined behavior, defining variadic functions are also banned.
 The rule does specify anything with variadic behavior using ellipses (anything with ...), and the JPL Coding Standard references specifically MISRA C 2004 Rule 16.1.
 There is not an explicit reason why defining variadic functions are banned, but I think it is probably to reduce complexity and allow better static analysis.
 It could also be because of rule 7 in needing to verify function parameters.
 Normal function parameters have an explicit type, but variadic functions can accept any number of arguments that can be any type with no way to verify type.
 They are also an easy way to introduce security risks due to improper usage or passing in unexpected values.
-Rule 2 could also apply, but if you ever do use variadic functions a length should be given instead of soley relying on the ending NULL.
 Personally I've never needed to use a variadic function, and when I did think about using one I simplified my code instead.
 
 ### 9. Pointers should at most have two levels of dereferencing
 
 Pointers are an essential tool in C, but as NASA says even the most experienced misuse it.
 They are the cause of a lot of segmentation faults, security vulnerabilities, and bad code, so it is important that their use is limited and clear.
-Once again NASA points to static analyzers and humans having potential trouble understanding the flow with bad pointers.
+Once again NASA points to static analyzers and humans having potential trouble understanding the flow.
 Originally, the NASA power of 10 doc only allowed one level of dereferencing, but the JPL document changed it to no more than two levels of dereferencing.
+As an extension, this means declaration of pointers should have no more than two levels of indirection.
 I guess the reason for JPL altering the rule is be less restrictive and allow direct usage of 2D arrays and pointers to pointers.
 Pointers are a large data type, so NASA may have wanted to reduce stack usage by decreasing holding value pointers.
 Most of the time though you will only ever need two levels of indirection, but programming is programming and there are exceptions with justification.
 These cases are pretty rare, so sticking to two levels is much prefered.
-As an extension, this means declaration of pointers should have no more than two levels of indirection.
 Below are some examples from MISRA C advisory rule 17.5.
 ```
 int8_t * s1;    /* compliant */
@@ -940,6 +1036,7 @@ void someFunction(char* some_parameter){. . .}   /* compliant */
 void someFunction(char** some_parameter){. . .}  /* compliant */
 void someFunction(char*** some_parameter){. . .} /* justification needed */
 
+/* Not from MISRA C */
 /* if more than 2 levels is required */
 
 int8_t*** three_dim_array = < some address >
@@ -985,19 +1082,13 @@ Below are some examples.
 ```
 /* This example uses all three just to show a point */
 *some_struct->pointer_array[x]
-
 vs
-
 *((some_struct->pointer_array)[x])
 
 *p++
-
 vs
-
 (*p)++
-
 or depending on intention
-
 *(p++)
 
 ```
@@ -1009,18 +1100,19 @@ The most prefered arithmetic method is using the `[]` operator to access element
 It is explicit in saying it is done on an array and at this index.
 The index should be validated that is it within bounds, and that overflows have not occured.
 You do not need to account for the size of the elements when indexing since it is handled automatically.
-`struct_array + 1` will go one index forward while `struct_array + sizeof(struct)` will index forward the the struct's size, so you do not go one index forward.
-MISRA C rules 17.1 - 17.4 explain some rules on what is best.
+`struct_array + 1` will go one index forward while `struct_array + sizeof(struct)` will index forward how ever much the size of the struct is.
+This means if the size of the struct is 8 it will index 8 times instead of 1 time.
+MISRA C rules 17.1 - 17.4 explains some other rules on what is best.
 
 ### 10. Compile with the most pedantic compiler settings with no warnings and check daily with static analyzers
 
 This rule is language dependent, but popular enough languages should have several tools that are free or proprietary.
 NASA says there is no excuse to not use these tools for any development, and they are right.
 If you want to take security more seriously looking into static analyzers is a great step.
-The usage of a static analyzer actually helps to forcefully implement some of these rules.
-If the static analyzer or compiler gets confused, the rules related to control flow have been broken.
+The usage of a static analyzer actually helps to forcefully implement some of these rules especially rule 1.
+If the static analyzer or compiler gets confused because of control flow then it means rule 1 is broken.
 A good compiler can give quite deep warnings, but a static analyzer can go into even more detail.
-For example, NASA mentions a lot about bounds in their rules which a static analyzer for C can determine, but not a strict compiler.
+For example, NASA mentions a lot about bounds in their rules which a static analyzer can determine, but not a strict compiler.
 A compiler can combine some aspects of a static analyzer for convenience, but it may not be as extensive.
 Once again this depends on the language.
 C has great compilers, but weakly typed languages may barely have any flags for checking.
@@ -1032,7 +1124,7 @@ C has a few compilers like GCC and Clang, but I will only go over GCC since that
 The most basic flags in GCC that help with getting as many errors as possible are `-Wall -Wextra -Werror -Wpedantic`.
 According to the JPL C Coding Standard, NASA uses `gcc –Wall –Wpedantic –std=iso9899:1999` (iso9899:1999 is C99).
 Although the document was written before C11 was released, so they may not use C99 anymore.
-Enforcing a standard is helpful though since flags like -Wpedantic will change their behavior based off the standard.
+Enforcing a standard is helpful since flags like -Wpedantic will change their behavior based off the standard.
 Some other GCC options include
 ```
 -Wtraditional
@@ -1050,7 +1142,7 @@ Note that you should not ship out your code with ASAN enabled since it is for de
 In recent development, GCC now comes with a static analyzer with the `-fanalyzer` option family if gcc is configured to use it.
 This option looks at program flow, and tries to find bugs like double frees and leaked open files.
 It can even help with rule 1 wth the `-fanalyzer-too-complex` flag which warns the user if the internal limit is reached.
-For a list of static analyzers Spinroot shows some here [Spinroot Static Analyzers for C](https://spinroot.com/static/).
+For a list of static analyzers for C Spinroot shows some here [Spinroot Static Analyzers for C](https://spinroot.com/static/).
 
 #### Java
 
@@ -1081,7 +1173,7 @@ For weakly typed languages it would be more beneficial to use a static analyzer 
 #### Other Languages
 
 This wikipedia article shows some static code analyzers available [Wikipedia list of static code analysis](https://en.wikipedia.org/wiki/List_of_tools_for_static_code_analysis)
-It is not an extensive list of all that is available, but as long as a language is not dead it probably has a static analyzer.
+It is not an extensive list of all that is available, but most languages have some form of static analysis.
 Even more obscure languages like R have an option to use, and apparently there is a talk about static code analysis for APL.
 Why anyone would use these languages in a serious context who knows, but this is just to show a point that there are options.
 
@@ -1106,13 +1198,13 @@ To show this, the table below will visual what catagory a rule releates to, and 
 | :--: | :------: | :---------: | :----------: |
 | 1    | Code Clarity<br>Predictable Execution | No | Control flow is created by the programmer. |
 | 2    | Predictable Execution | No | Any loop can be set to have bounds. |
-| 3    | Predictable Execution | Yes | OOP & weakly typed languages can not avoid the HEAP. |
+| 3    | Predictable Execution | Yes | C and C++ manually manage memory.<br> Garbage collected languages do not have as much control. |
 | 4    | Code Clarity | No | Programmers make large functons. |
 | 5    | Defensive Coding | No | Assertions can be created in any language. |
 | 6    | Defensive Coding<br>Clear code | No  | Any language with scope can declare at lowest scope. |
 | 7    | Defensive Coding | No | Any language with functions and returns can check them. |
 | 8    | Code Clarity | Yes | Not all languages have a preprocessor as extensive as C. |
-| 9    | Code Clarity<br>Predictable Execution | Yes | Not all languages can control pointers like C can.<br>OOP or weakly typed languages still have them implicitly, but are used differently. |
+| 9    | Code Clarity<br>Predictable Execution | Yes | Not all languages can control pointers like C can.<br>OOP or weakly typed languages still have them implicitly but are used differently. |
 | 10   | Language Compliance | No | C just so happens to have great compilers compared to other languages.<br>Any popular enough language has a static analyzer |
 
 ## Sources
