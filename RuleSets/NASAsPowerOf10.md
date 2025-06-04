@@ -293,7 +293,7 @@ Below I will provide some sources that explain this better than I can.
 #### Task Timeout
 
 Task time outs is setting a time limit that the program will wait for a task to finish.
-This is useful to have on servers, so that a long running task can not be abused to create a DDoS attack.
+This is useful to have on servers, so that a long running task can not be abused to create a DoS attack.
 Regex is one example.
 There are some "evil regex" patterns that can act as a Denial of Service.
 This Wikipedia article explains about it [Wikipedia ReDoS](https://en.wikipedia.org/wiki/ReDoS).
@@ -1223,7 +1223,7 @@ To show this, the table below will visual what category a rule relates to, and t
 
 [Guidelines on Software for Use in Nuclear Power Plant Safety Systems](https://www.nrc.gov/docs/ML0634/ML063470583.pdf)
 
-[Tiger Beetle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md)
+[TigerBeetle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md)
 
 [Low Level NASA Power of 10 Video](https://www.youtube.com/watch?v=GWYhtksrmhE)
 Thank you Low Level for getting me interested in NASA's Power of 10 in the first place
