@@ -1,7 +1,3 @@
-Note that I am not quite done with this.
-It is at least good enough for me to make public though.
-A little easter egg for those who look at this is that this is made entirely in vim.
-
 # NASA's Power of 10
 
 ## Description
@@ -11,32 +7,32 @@ This is software where failure can result in death, harm the environment, or los
 These guidelines have this in mind, but nothing says they are solely for these scenarios.
 In a broad sense, it is software where people depend on correct implementation to avoid catastrophe.
 One example is TigerBeetle using these rules for online transaction processing for businesses.
-Businesses may not be considered safety critical, but they have business critical components that must stay operable to avoid heavy loses.
-For these cases that require a focus on secure programming, NASA's Power of 10 is fantastic guideline.
+Businesses may not be considered safety critical, but they have business critical components that must stay operable to avoid heavy losses.
+For these cases that require a focus on secure programming, NASA's Power of 10 is a fantastic guideline.
 However, one big caveat is that NASA's Power of 10 is **NOT** all encompassing on secure programming.
 Its purpose is to act as 10 simple, memorable, and effective guidelines to help in creating reliable and robust code.
-These rules do not go over how to avoid vulnerabilities or other best practices which is why you should stil read security standards for your language.
+These rules do not go over how to avoid vulnerabilities or other best practices which is why you should still read security standards for your language.
 Speaking of languages, keep in mind that these guidelines focus on **safety critical C Code**.
 This means some of NASA's justification relates to the woes of C and how to make C safer.
 This results in people hardening their mind to these rules, but I believe people should not.
-In the general case these should be treated as guidance rather than strict adherence.
+In the general case, these should be treated as guidance rather than strict adherence.
 Some of the rules apply to C-like languages while other rules are simply good practices to have for any language.
 So despite this catch, I feel it is important to read NASA's power of 10 for the fact it alters your mind to be more defensive and considerate on how you program.
 
 Below is my commentary on the rules with what they mean and what it means for other constructs.
-I purposely did not include NASA's rationale explicitly in here because I did not want this be another copy and paste document about their rules.
+I purposely did not include NASA's rationale explicitly in here because I did not want this to be another copy and paste document about their rules.
 I also want you to read the documents :P.
 These guidelines assume the reader already has a pretty good understanding on why NASA has their rationale.
 It assumes the reader knows about embedded systems, the importance of analysis, and working with a team of programmers.
-To keep these rules short and understandable NASA can not explain everything.
-To help fill in a gap I thought existed I wanted to create a document on what a normal programmer would think.
-Albeit a programmers who really likes secure programming.
-I wanted take a stance that will focus more on how these rules can be applied in general programming.
-This will of course mean a more relaxed stance on some rules for the sake of being more applicable, but it does not mean the rule can not be implemented.
-If anything it would be an argument about practicality rather than feasibility.
+To keep these rules short and understandable NASA cannot explain everything.
+To help fill in a gap I thought existed, I wanted to create a document on what a normal programmer would think.
+Albeit a programmer who really likes secure programming.
+I wanted to take a stance that will focus more on how these rules can be applied in general programming.
+This will of course mean a more relaxed stance on some rules for the sake of being more applicable, but it does not mean the rule cannot be implemented.
+If anything, it would be an argument about practicality rather than feasibility.
 Taking a wider approach does allow a conjuring on how these rules would apply to situations not explained in these guidelines.
 
-I recommend that you read the sources to gain more incite into NASA's reasoning.
+I recommend that you read the sources to gain more insight into NASA's reasoning.
 For example, a lot relates to static analysis.
 There is also the consideration that these documents are much older and reference older material.
 This is not to say the rules are void because of their age, but more so to keep in mind that technology and stigma at the time was a consideration.
@@ -102,7 +98,7 @@ Continue is more so banned since it is a little unnecessary in that the next ite
 In some cases it is more problematic since continue is skipping everything below it like in the example above where it skips printing 6.
 Break on the other hand does have a use where some condition can terminate the loop early, but a loop should only have one early exit point.
 It can be used sparingly in the right circumstances such as finding a specific value in an array, or calling a function in a standard loop that can return an error.
-Sometimes a condition is not know until it gets into the iteration, and break offers a simple solution to handle it.
+Sometimes a condition is not known until it gets into the iteration, and break offers a simple solution to handle it.
 In cases where a loop can have two outcomes, or break offers a more simple clear solution it is acceptable.
 
 #### Recursion
@@ -129,10 +125,10 @@ Unless you are using a purely functional language, recursion can be avoided, but
 
 Goto is a little weird.
 It is viewed as a monster of the past for those who lived it and a cursed relic for those who haven't.
-There was good reason for the hatred, and with structured programming becoming the new thing goto was exhiled.
+There was good reason for the hatred, and with structured programming becoming the new thing goto was exiled.
 Now that some time has past, with structured programming and OOP as the standard, goto kind of... just exists.
 Although I suppose Linux kernel devs could argue some points with their do-while goto loops.
-Now adays goto has this one very special specific use case to jump to error handling.
+Nowadays goto has this one very special specific use case to jump to error handling.
 MEM12-C explains how this could be used [MEM12-C](https://wiki.sei.cmu.edu/confluence/display/c/MEM12-C.+Consider+using+a+goto+chain+when+leaving+a+function+on+error+when+using+and+releasing+resources)
 This is touted as the best use case for goto in trying to increase readability.
 It is of course still possible to avoid goto for a more structured approach, but this can be less readable.
@@ -165,11 +161,11 @@ Of which NASA says there should only be one non-terminating loop per task or thr
 
 The original wording from Power of 10 wording specifies "all loops must have a fixed upper-bound".
 When I first read this rule I was initially perplexed about what it meant for implementation.
-Did this mean NASA just never used functions like strlen or pass in size arguments?
+Did this mean NASA just never used functions like strlen() or pass in size arguments?
 Did this just mean to strictly use constant variables to sent bounds for array like structures?
 This was probably the original intention since the length of a constant would not change.
 Although what would be the proper handling when dynamic length was needed?
-Since the length obtained is not fixed would it needed to be along side a fixed bound as well?
+Since the length obtained is not fixed would it need to be alongside a fixed bound as well?
 Something like `for(int i = 0; i < (length of array) && i < (max upper bound); i++){. . .}`?
 This seems unnecessary though as would rule 5 and rule 7 check for this?
 Luckily the JPL Coding Standard clarifies the rule by saying it shall be possible for a static analyzer to affirm the bound.
@@ -237,9 +233,9 @@ You could then use this to verify that your strings are of a certain length.
 
 #### General Cases
 
-NASA does not code for ordianary users.
+NASA does not code for ordinary users.
 It is not like a user is going to specify a file with -f or upload a file.
-Applying this rule to a more general environment is then a little more tricky.
+Applying this rule to a more general environment is a little more tricky.
 This rule is pretty easy to apply when traversing a structure where there are bounds, but this is not always the case.
 Cases where the condition to terminate is outside your control, but your desire is to get out that loop come to mind.
 Cases such as
@@ -251,14 +247,14 @@ Cases such as
 Technically a bound can be placed on everything through the scientific power of picking a number.
 This is a valid option to comply with this rule
 For example, apt when prompting for Y/N to upgrade will only give you one try.
-apt could give you many tries, but it was probably more simple this way than polling until proper input is given.
+Apt could give you many tries, but it was probably more simple this way than polling until proper input is given.
 Maybe the program is reading from a socket that keeps giving bad data.
 Perhaps it's okay to block until good data, but if the context is time sensitive returning an error after x attempts would make sense.
 Either way it would have to be verified that only the specified conditions can terminate the loop.
-The same would go for files, but they are not as clear cut.
+The same would go for files, but they are not as clear-cut.
 Adding a limit would depend on what the file is for.
 If a program depends on reading the whole file like reading line by line there would not be a reason to add a bound.
-The program does not care how big the file is it is infact using it as a loop.
+The program does not care how big the file is it is in fact using it as a loop.
 It really just cares about if the lines are valid.
 Some cases the size of the file does matter.
 Maybe it is expected that a file is only ever a certain size, so the program never reads past an amount of bytes even if the file is changed midway.
@@ -267,19 +263,19 @@ It may make sense to add a bound it may not make sense.
 
 #### Async & Sync
 
-This topic is relevant to this rule since this is talking about predictable execution of multiple processes.
-I do not have much knowledge in this for embedded systems, so I will mostly be quoting NASA.
+This topic is relevant to this rule since this talks about predictable execution of multiple processes.
+I do not have much knowledge in this area for embedded systems, so I will mostly be quoting NASA.
 NASA's power of 10 does not say anything about synchronous or asynchronous behavior.
-Handling this kind of behavior is instead talked about in the JPL Coding Standard.
+Handling this kind of behavior is instead mentioned in the JPL Coding Standard.
 To maintain predictability NASA says that inter-process communication (IPC) should be the only way tasks communicate with each other.
 Additionally, the way a task gets this information should be obtained from a single point in the task.
 NASA claims that proper usage of IPC promotes separation of concerns and modularity while avoiding the need for error-prone semaphores, locks, or interrupts.
-When it comes to shared memory NASA says ownership of objects should be passed around.
+When it comes to shared memory, NASA says ownership of objects should be passed around.
 The JPL document also mentions threads which would need synchronization inside a process.
 NASA says to never use task delays as it is a guessing game on how long a thread should wait which leads to race conditions.
 Semaphores and locks should also be avoided, but if they must be used the locking and unlocking should be paired in the same function body.
-The only exception they mention is a produce-consumer style of locking.
-This is an attempt to prevent dead-lock where threads are waiting for a lock to be released, but they hold the lock other processes need.
+The only exception they mention is a producer-consumer style of locking.
+This is an attempt to prevent deadlock where threads are waiting for a lock to be released, but they hold the lock other thread needs.
 Below I will provide some sources that explain this better than I can.
 
 [Geek for Geeks IPC](https://www.geeksforgeeks.org/inter-process-communication-ipc/)
@@ -292,8 +288,8 @@ Below I will provide some sources that explain this better than I can.
 
 #### Task Timeout
 
-Task time outs is setting a time limit that the program will wait for a task to finish.
-This is useful to have on servers, so that a long running task can not be abused to create a DoS attack.
+Task time-outs is setting a time limit that the program will wait for a task to finish.
+This is useful to have on servers, so that a long-running task cannot be abused to create a DoS attack.
 Regex is one example.
 There are some "evil regex" patterns that can act as a Denial of Service.
 This Wikipedia article explains about it [Wikipedia ReDoS](https://en.wikipedia.org/wiki/ReDoS).
@@ -359,16 +355,16 @@ Some ways to imitate dynamic behavior
 4. Arenas
 5. Pre-allocate
 
-NASA's environment is different than most people.
+NASA's environment is different from most people.
 I can't say to avoid dynamic memory completely for all general programs, but I can say to keep explicit allocation to a minimum.
-This way as few mallocs need to be tracked, and it allows usage of the printf family or fopen.
+This way as few mallocs need to be tracked, and it allows usage of the printf family or fopen().
 Dynamic memory can very easily be mismanaged, so it is important to use it only when necessary.
 Each extra allocation is another risk so handle it properly.
 
 ### 4. Function Length should be printable on a page with one statement per line
 
 The principle of this rule is to treat your functions as small logical units.
-Longer "everything" functions are often a sign that logic is poorly thought out, or that stratification is needed.
+Longer everything functions are often a sign that logic is poorly thought out, or that stratification is needed.
 Not only is it harder to debug a large function because of its size, but it also much slower to understand in the first place.
 Having to scroll down or jjjjjjjj/kkkkk to find far separated code can feel like walking into many rooms and forgetting why you are there in the first place.
 So you jump back to where you had a foot hold of understanding because "ahh it was that variable I am concerned about".
@@ -390,7 +386,7 @@ The exact interpretation of this rule can vary.
 NASA's Power of 10 says 60 lines of code, but generally what can be printed on a single page in standard reference format.
 The JPL Coding Standard says 60 lines of text, but includes 60 lines of code from the Power of 10.
 TigerBeetle uses a hard limit of 70 lines.
-The Spinroot site says 60 is typical, but an reasonable value between 50 - 100 works.
+The Spinroot site says 60 is typical, but a reasonable value between 50 – 100 works.
 Spinroot's interpretation is defined by actual code excluding comments and empty lines.
 They take the file and normalize it to account for different styles and then count each line.
 
@@ -398,10 +394,10 @@ They take the file and normalize it to account for different styles and then cou
 
 What every interpretation had in common though, was that each statement and declaration should be on separate lines.
 This is to avoid cheating the rule with statements like `unsigned int i, n, h, w, x, y, mw;` or `int i, j = 1`.
-It avoids statements like `int* x,y,z` where only x is actually a pointer and the rest are ints.
+It avoids statements like `int* x,y,z` where only x is actually a pointer and the rest are normal integers.
 You would need to do `int* x, *y, *z` instead to make them all pointers.
-Statements that can create confusion at first glace like `int i, j = 1` are also avoided.
-Here both i and j are assigned one, but at first glance it can seen as if i is assigned a default value and j as 1.
+Statements that can create confusion at first glance like `int i, j = 1` are also avoided.
+Here both i and j are assigned one, but at it can seem as if i is assigned a default value and j as 1.
 Some more examples I will provide below.
 ```
 /* not abiding by rule */
@@ -445,7 +441,7 @@ Just know that edge cases like these can exist.
 
 #### Ifs and Whiles
 
-The mention about for-loops got me a little curious on what this meant for ifs and whiles.
+The mention about for loops got me a little curious on what this meant for ifs and whiles.
 The conditional statement is separated by && and || (or even bitwise & |) instead of semicolons.
 Sometimes these boolean expressions can get a little long, so what does this rule mean for them?
 I think the preference is to maintain a single line if possible, or even better just have a simple boolean expression.
@@ -498,11 +494,11 @@ NASA does not say anything about column limits in these documents, but excessive
 80 seems to be more preferred, but it tends to more of a soft limit for most people.
 100 characters seems to be the more acceptable hard limit, and it is what I stick by.
 
-### 5. There shall be minimally an average of 2 assertions per function with assertions containing no side-effects and must be boolean expressions
+### 5. There shall be minimally an average of 2 assertions per function with assertions containing no side effects and must be boolean expressions
 
 If for what ever reason you hate the other rules this rule you can't hate.
 NASA makes a point that unit testing catches 1 bug every 10 to 100 lines, but combined with assertions unit testing catches much more bugs.
-Of course it is obvious that adding more checks will catch more bugs, but this a superficial way to look at it.
+Of course, it is obvious that adding more checks will catch more bugs, but this is a superficial way to look at it.
 Unit testing and assertions complement each other since they capture different aspects of development.
 Assertions test a programmer's assumptions that should always remain true or false.
 They are meant to catch errors strictly from a programmer rather than errors from handling data.
@@ -522,14 +518,14 @@ Where do you **NOT** use assertions?
 - Validating user input
 - Public facing methods verifying parameters
 - Handling expected errors (like file open failure)
-- Data outside of your control
+- Data outside your control
 
 In these cases you should **VALIDATE** like in rule 7.
 Do not use assertions on things you can't say should **ALWAYS** be true or false.
 This is because assertions are removable for performance reasons.
 The idea is that during development the assertion never triggered, so it should be safe to remove.
 An argument can be made if assertions should be removed in the first place since debugging never stops in programming.
-Typically assertions are removed for user convenience in non-safety critical applications, but safety critical systems may want to keep them.
+Typically, assertions are removed for user convenience in non-safety critical applications, but safety critical systems may want to keep them.
 If you want to modify the behavior of the default assertion, or don't want them to be removable you can create your own.
 
 This brings up a question on how to write an assertion.
@@ -582,7 +578,7 @@ However, C has some other neat features that makes this rule slightly more compl
 
 #### Static
 
-Typically `static` is know for declaring a variable that persists within a function.
+Typically, `static` is known for declaring a variable that persists within a function.
 For the most part this should be avoided as it is an easy way to create side effects.
 However, static in C can be used on a function to specify that its scope is within the file.
 More specifically it is indicating internal linkage.
@@ -603,9 +599,9 @@ static void someFunction(){
 
 The opposite of `static` in C would be `extern`.
 This specifies external linkage.
-extern is like making a global object that is declared in the header file that later gets defined in the source file to be passed around.
+Extern is like making a global object that is declared in the header file that later gets defined in the source file to be passed around.
 It is a way to extend the visibility to many source files.
-By default functions are extern in the header file hence why you define them in the source file.
+By default, functions are extern in the header file hence why you define them in the source file.
 You can of course define extern variables, but caution should be used with them.
 NASA says if two extern variables have the same name, but different types it can create undefined behavior.
 Just make sure that extern objects are unique.
@@ -622,10 +618,9 @@ for(int x = 0; x < 10; ++x){
 
 In the example above this would result in the loop executing 10 times instead of 0 times.
 Shadowing can result in unexpected behavior since it won't refer to the variable you think.
-one way to avoid shadowing is to create explicit names.
+One way to avoid shadowing is to create explicit names.
 Perhaps including units into the variable itself can distinguish different length variables.
 The rule about variable reuse is to create better readability.
-Using a length variable for many unrelated purposes can make debugging more difficult as you then need to find which effectively different length variable is the issue.
 
 #### Pure Functions
 
@@ -634,7 +629,7 @@ NASA says these are functions that do not touch global data, avoid storing local
 It is basically a function that strictly takes what it is given and will give the same result each time when given identical arguments.
 This can be aided with the use of const and enums to declare that this is something that won't be modified.
 Const especially should be used on reference types whenever possible.
-This wikipedia article explains a little more [Pure Functions Wikipedia](https://en.wikipedia.org/wiki/Pure_function)
+This Wikipedia article explains a little more [Pure Functions Wikipedia](https://en.wikipedia.org/wiki/Pure_function)
 
 ### 7. Check all return values of non-void functions and validate passed in parameters
 
@@ -651,7 +646,7 @@ The only case where the return value would not matter is if the case of error an
 NASA gives printf and close as an example.
 In such matters, casting to void is an acceptable way to explicitly express this `(void)printf("%s", "Hi")`.
 This way others know the return value is purposely ignored, but also allows for questioning if it should be ignored.
-In most cases though the return value should be checked because it is main way C communicates something went wrong.
+In most cases though, the return value should be checked because it is the main way C communicates something went wrong.
 This is especially true if the function needs to propagate the error up the call chain.
 This type of behavior would also extend into programmer made functions.
 As the function is being created there is a thought about what can go wrong with each step.
@@ -703,12 +698,12 @@ MISRA C 2004 rule 20.3 mentions some ways of conducting validation
 
 The way try/catch uses this rule is. . . interesting.
 I do not expect NASA to use try/catch as it violates creating an explicit clear control flow specified in rule 1 and violates predictable execution.
-In fact, goto and setjmp/longjmp are banned in rule 1, and they are the only two mechanisms that could implement a pseduo exception system in C.
+In fact, goto and setjmp/longjmp are banned in rule 1, and they are the only two mechanisms that could implement a pseudo exception system in C.
 All this rule is saying is to check the return value of the function and to check the validity of parameters.
 It is as simple as creating a clear line of if statement, but people did not like ifs all over their code so try/catch was created.
 The question is how does try/catch implement this rule?
 For validation it is pretty easy.
-It would functionally be the same except it just returns a more specifc exception rather than a sentinel value.
+It would functionally be the same except it just returns a more specific exception rather than a sentinel value.
 ```
 /* using modified example from above */
 int searchWrapper(String string, char needle){
@@ -719,16 +714,17 @@ int searchWrapper(String string, char needle){
 }
 
 ```
-
+This may not always be preferable though.
+It really just depends on the situation as returning a sentinel value could be considered part of normal flow.
 Higher level languages tend to avoid status errors because exceptions are a way to force compliance.
 The way C handles errors allows for errors to be silently ignored if not checked for hence this rule's existence.
-Hence why it is a feature that exceptions will bubble up to what ever can handle it, and if it reaches the very top the program crashes.
-Although it is not like C can not do this.
+To avoid this, it is a feature that exceptions will bubble up to what ever can handle it, and if it reaches the very top the program crashes.
+Although it is not like C cannot do this.
 NASA mentions it themselves that error values must be checked to return it up the call chain in effect creating this bubbling effect.
 It is just more clean looking in higher level languages.
-The more nuanced part of try/catch is the how it applies to checking the return value of functions.
+The more nuanced part of try/catch is how it applies to checking the return value of functions.
 An exception is not exactly a return value.
-It is an indication of error that so happens to act as a return value when it occurs.
+It is an indication of error that can act as some kind of return when it occurs.
 This is where the nuance in the implementation of this rule exists because how it is treated as a return is dependent on the language's main philosophy.
 
 #### Easier to Ask For Forgiveness than Permission (EAFP)
@@ -736,10 +732,10 @@ This is where the nuance in the implementation of this rule exists because how i
 This philosophy encourages assuming you have valid behavior, but when some exception occurs to handle it.
 The thinking is more like "oopsie can't do that lets try this instead".
 Python is one such language.
-try/catch is used as the control flow mechanism acting more like if/else, and tends to use the try/catch itself as lazy validation.
+Try/catch is used as the control flow mechanism acting more like if/else, and tends to use the try/catch itself as lazy validation.
 In a way exceptions are treated as a return, so it is part of control flow.
 This kind of philosophy would not pair well with safety critical systems as it is hoping to encounter an error first before handling it.
-Additionally C is not going give you forgiveness.
+Additionally, C will not grant you forgiveness.
 
 Example of EAFP:
 ```
@@ -747,6 +743,13 @@ try:
     value += dict_["key"]
 except KeyError:
     pass
+
+--------------------------
+
+try:
+    parseStringToInt(user_input)
+except WhatEverException:
+    return None
 ```
 
 #### Look Before You Leap (LBYL)
@@ -762,44 +765,55 @@ Example of LBYL:
 ```
 if "key" in dict_:
     value += dict_["key"]
+
+--------------------------
+
+if valdiateIsAllNumbers(user_input):
+    parseStringToInt(user_input)
+else:
+    return None
 ```
 
 #### How Does This Rule Affect Try/Catch
 
-In reality a mix of both philosophies will be used in coding.
+In reality, a mix of both philosophies will be used in coding.
 It is true that LBYL can create race conditions, so EAFP is preferred sometimes.
 A good example is opening a file.
-It is better to simply try and open the file rather than test if it exists then open it as that exposes a race condition.
-In C this would be an fopen/open call and checking directly afterwards if it is NULL/-1.
-It is not like C is strictly a LBYL language, it just handles exceptions by returns.
-Try/catch just takes out the error portion of the return.
+It is better to simply try to open the file rather than test if it exists then open it as that exposes a race condition.
+In C this would be a fopen/open call and checking directly afterward if it is NULL/-1.
+It is not like C is strictly a LBYL language, it just handles errors by returns.
+Try/catch takes out the error portion of the return and added a bunch of other stuff.
 It puts the error handling into its own separate explicit place if it were to occur.
-This mean if the caller got their return with no exceptions it is an expected return.
+This means if the caller got their return with no exceptions it is an expected return.
 It does not mean however that it is the desired value.
 The return value could be empty, or some other expected indication of invalidity.
 As an example Java's indexOf returns -1 if it could not find what it was given.
 This means that rule 7 still applies but checking for issues is split.
 There is the side checking the expected return, and there is a side checking the exceptional return.
-Sometimes try/catch the only way to catch any kind of error because the return is always valid.
+Sometimes try/catch is the only way to catch any kind of error.
 Although, the programmer is not forced to catch an exception if they can't handle it.
-It is perfectly acceptable to just try and have the catch somewhere up above.
 Only handle exceptions that can be handled at that exact point.
 It is important to not swallow bubbled up exceptions because it can leave the program in a bad state.
+Although, in some cases exceptions are purposely swallowed to act as a no-op (NOP) like in the EAFP example above.
+Sometimes the exceptions cannot be completely handled, so it is rethrown.
 As a note, simply printing out a message is not handling an error.
 It's like pointing out the house is on fire then going back to watching TV.
-However, it is important to know what exactly is on fire.
-Yes the exception tells me there is a fire, but what in the control flow triggered it.
+This is not to say you cannot log it.
+Just do not **only** print the exception occurring.
+Sticking to the topic of fire.
+It is important to know what exactly is on fire and how it is handled.
+Yes the exception tells you there is a fire, but what in the control flow triggered it?
 It could be several function calls deep or masked within nested operations like `array1[array2[x]]`.
+Is the stack call itself masked because rethrowing changed the stack trace?
+Where does the control flow continue once it is handled?
 This is why try blocks should be confined to what can actually throw sparks.
-
-//program encased ni try 
 
 ### 8. The preprocessor should be left for simple tasks like includes, simple macros, and header guards
 
 In C, the preprocessor is a tool that allows the code to be altered just before compiling.
 It is essentially a text substitution tool capable of simplifying tasks, but also capable of creating stupidly unreadable code.
 It is a very powerful obfuscation tool that if used haphazardly can harm readability for humans, tool based checkers, and debuggers.
-With this obfuscation, it is important that the macro itself is syntactically valid which would mean encasing the body in parenthesis or curly brackets.
+With this obfuscation, it is important that the macro itself is syntactically valid which would mean encasing the body in parentheses or curly brackets.
 Within the macro itself it should not hide pointer dereferencing or declarations.
 The Macros themselves should reside only in the header file and not in the middle of scope or functions.
 
@@ -816,11 +830,11 @@ Below can be simple, but can be complex depending on what is being done.
 - Do while zero construct
 
 The do-while one is a bit weird.
-From what I've researched it seems to try and avoid the faults of the preprocessor.
-It is a way to create more complicated expressions while maintaining scope and having to insert a semi-colon at the end.
+From what I've researched it seems to try to avoid the faults of the preprocessor.
+It is a way to create more complicated expressions while maintaining scope and having to insert a semicolon at the end.
 It's a little bit of a hack, but compiler optimization will remove the do while portion.
 
-shown below are some examples
+Shown below are some examples
 ```
 #include <stdio.h>                  /* including standard library */
 #include "MyHeader.h"               /* including programmer made header */
@@ -860,7 +874,7 @@ Below I will explain some of the secret powers and if they should be used.
 Function like macros are not banned under NASA's rule, but caution should still be used.
 In basic terms, a function like macro is defined as any macro that takes in arguments.
 They can even be used as a way to ignore types as long as the proper type expected is passed.
-it is defined like `#define <name of macro>(<arguments>) <definition using arguments>`.
+It is defined like `#define <name of macro>(<arguments>) <definition using arguments>`.
 Note that there is no space after the name and parenthesis for the arguments.
 This is because if there is a space it would create an object like macro instead.
 A few examples are below.
@@ -872,10 +886,10 @@ A few examples are below.
 ```
 
 Now remember that the preprocessor will just copy and paste the values into the expression.
-This is why the arguments are surrounded in parenthesis to maintain correct order of operations.
+This is why the arguments are surrounded in parentheses to maintain correct order of operations.
 If an expression like `3 + 4 * 9` were used in SQUARE without parenthesis it would expand to `3 + 4 * 9 * 3 + 4 * 9` instead of `(3 + 4 * 9) * (3 + 4 * 9)`.
 This would mean an evaluation of 147 instead of 1521.
-However this doesn't solve other side effects like incremenation.
+However, this doesn't solve other side effects like incremenation.
 Using an expression like `MAX(x++, y - 1);` in the MAX macro would result in `(x++) > (y - 1) ? (x++):(y - 1);`.
 This can result in x getting incremented twice and seemingly give the correct post-fix value if it is the max value.
 This can also lead to unspecified behavior in the SQUARE macro `SQUARE(++some_int); - > ((++some_int) * (++some_int));`.
@@ -937,7 +951,7 @@ int xy = 3;
 printf("%d\n", combine(x, y));
 
 ```
-However if you were to surround x and y in quotes it would create "x""y" which is not a valid token.
+However, if you were to surround x and y in quotes it would create "x""y" which is not a valid token.
 Token pasting is sneaky little tactic that makes it hard to read what the intention is.
 It's like reading two unrelated things, but some how it just made something.
 It can very quickly create hard to read code for humans and tools, so NASA bans it to keep things simple.
@@ -971,7 +985,7 @@ The thing about Macros is that they are not recursive.
 Once the macro expands it will not expand into itself again if it was directly from the previous pass.
 This is refereed to as `painted blue`.
 People have gotten around it by deferring one extra step so the macro expands into another expansion that calls the desired macro.
-In effect it is basically a hack to get around the preprocessor and it creates incredibly unreadable code.
+In effect, it is basically a hack to get around the preprocessor, and it creates incredibly unreadable code.
 It would look something like this.
 ```
 #define EVAL1(x) x
@@ -993,7 +1007,7 @@ This StackOverFlow post explains in more detail [recursive preprocessor to creat
 #### Variadic Macros
 
 Usage of __VA_ARGS__ allows you to make a variadic macro and sometimes is used for recursive calling macros.
-It's usage tends to lead to macro chaining like this.
+Its usage tends to lead to macro chaining like this.
 ```
 #define ESC(...)  __VA_ARGS__
 
@@ -1022,9 +1036,9 @@ Personally I've never needed to use a variadic function, and when I did think ab
 Pointers are an essential tool in C, but as NASA says even the most experienced misuse it.
 They are the cause of a lot of segmentation faults, security vulnerabilities, and bad code, so it is important that their use is limited and clear.
 Once again NASA points to static analyzers and humans having potential trouble understanding the flow.
-Originally, the NASA power of 10 doc only allowed one level of dereferencing, but the JPL document changed it to no more than two levels of dereferencing.
+Originally, the NASA power of 10 document only allowed one level of dereferencing, but the JPL document changed it to no more than two levels of dereferencing.
 As an extension, this means declaration of pointers should have no more than two levels of indirection.
-I guess the reason for JPL altering the rule is be less restrictive and allow direct usage of 2D arrays and pointers to pointers.
+I guess the reason for JPL altering the rule is to be less restrictive and allow direct usage of 2D arrays and pointers to pointers.
 Pointers are a large data type, so NASA may have wanted to reduce stack usage by decreasing holding value pointers.
 Most of the time though you will only ever need two levels of indirection, but programming is programming and there are exceptions with justification.
 These cases are pretty rare, so sticking to two levels is much preferred.
@@ -1100,9 +1114,9 @@ or depending on intention
 Pointer arithmetic and comparison shall be limited to just array objects and within the bounds of said array object.
 The most preferred arithmetic method is using the `[]` operator to access elements.
 It is explicit in saying it is done on an array and at this index.
-The index should be validated that is it within bounds, and that overflows have not occured.
+The index should be validated that is it within bounds, and that overflows have not occurred.
 You do not need to account for the size of the elements when indexing since it is handled automatically.
-`struct_array + 1` will go one index forward while `struct_array + sizeof(struct)` will index forward how ever much the size of the struct is.
+`struct_array + 1` will go one index forward while `struct_array + sizeof(struct)` will index forward however much the size of the struct is.
 This means if the size of the struct is 8 it will index 8 times instead of 1 time.
 MISRA C rules 17.1 - 17.4 explains some other rules on what is best.
 
@@ -1226,4 +1240,4 @@ To show this, the table below will visual what category a rule relates to, and t
 [TigerBeetle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md)
 
 [Low Level NASA Power of 10 Video](https://www.youtube.com/watch?v=GWYhtksrmhE)
-Thank you Low Level for getting me interested in NASA's Power of 10 in the first place
+Thank you to Low Level for getting me interested in NASA's Power of 10 in the first place.
