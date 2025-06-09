@@ -20,51 +20,93 @@ Now I can hear you say "Wow! Nice history lesson that I don't care about!", but 
 The digital age fundamentally changed how we deal with files.
 Files are a singular unit defined by a collection of binary rather than records.
 Unlike paper which could simply be grabbed, binary data needs interpretation on what it is.
-Therefore, a system had to be placed to define the abstraction of a file, the boundaries of files and what collections exist.
+Therefore, a system had to be placed to define the abstraction of a file, the boundaries of files, and what collections exist.
 The identity of what creates a file or folder is so intertwined with the abstraction of the system that they cannot exist without the system.
 This would mean that a system designed around a GUI vs a CLI would have different implementations on files.
 It is this abstraction that determines how to properly handle files and folders thus affecting security.
 
-### Linux File Handling
+### Linux Files
 
 It is pretty well-know that Linux has a principle of treating "everything as a file".
-Your devices are files, your configs are files, your standard input and output is a file, processes are many files, and mounting a drive turns into a file.
+Your devices, your memory, your configs, your standard input and output, processes, and mounted file systems are "files".
 But how could this possibly be?
-Aren't files binary data on disk that the system interprets?
-That would be true if Linux did not have different types of files.
-Everything is not strictly a file, but everything is handled like a file.
-The mechanisms for reading, writing, opening, and closing are all streamlined but how is this done?
-The core mechanism that this is accomplished is with file descriptors.
-The beautiful fact about this abstraction is that it is just an integer.
-This integer is what allows for such seamless behavior of piping, redirection, and sockets.
-As an example, stdin, stdout, and stderr are defined as 0, 1, and 2 in that order.
-When redirecting with `>>`, `>`, or `<`, it actually sets the fd as a link to that file in /proc/[PID]/fd.
-Really anything that can take or send a byte string is a file on Linux.
+Aren't files a logical location of binary data on disk?
+Well the previous saying is not entirely true.
+A more accurate saying would be to say "everything can be treated as a file".
+There is a singular common interface where a program can use open(), close(), read(), and write() no matter the "file".
+The actual implementation is abstracted away, and the program just has to worry about a byte stream.
+Naturally, this means Linux has different kinds of files which are specified in the man page for find.
+They are shown below.
+```
+-type c
+      File is of type c:
 
-But why is it an integer?
-Well this is because there is file descriptor table that is essentially just an array.
-Hence why the first three standard descriptors are 0, 1, and 2.
+      b      block (buffered) special
 
-Really in Linux everything is treated as a byte stream.
-Processes just take in the stream and parse the data.
+      c      character (unbuffered) special
 
+      d      directory
 
-Really everything is just a pointer.
-A more accurate way of saying "everything is a file" is "everything has a file descriptor".
-This kind of implementation is what allows the neat command line tricks like redirection and pipes
-Technically everything isn't strictly a file, but more so wrapped in a file like object.
-If you have used a dynamic window manager you are probably familiar with extracting or manipulating the system state with files.
-Something like echoing 50 into the corresponding backlight file to change the brightness of the screen.
-[Linux Process Injection](https://www.akamai.com/blog/security-research/the-definitive-guide-to-linux-process-injection)
+      p      named pipe (FIFO)
 
-//talk about files on Linux
+      f      regular file
+
+      l      symbolic link; this is never true if the -L option or the
+             -follow  option is in effect, unless the symbolic link is
+             broken.  If you want to search for symbolic links when -L
+             is in effect, use -xtype.
+
+      s      socket
+
+      D      door (Solaris)
+```
+Beyond file types though this is all the user can see.
+The kernel will handle what drivers are used for the file.
+A little peek into how the drivers are specified is under linux/fs.h. (probably under /usr/src/\[linux header version\]/include/linux/fs.h)
+The kernel will define what operations are available with the file_operations struct.
+It looks something like this
+```
+/* this is not the complete structure */
+struct file_operations {
+	struct module *owner;
+	loff_t (*llseek) (struct file *, loff_t, int);
+	ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
+	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
+    . . .
+	int (*open) (struct inode *, struct file *);
+	int (*flush) (struct file *, fl_owner_t id);
+	int (*release) (struct inode *, struct file *);
+    . . .
+} __randomize_layout;
+```
+The important ones to note here are the open, release (close), read, and write function pointers.
+Pretty neat if you ask me!
+
+### Linux File Handling
+
 //talk about file descriptor
 //talk about /proc
     //proc has its own fds per process stored in /proc/<PID>/fd/
 //talk about stdin, stdout, stderr
-//talk about how stdout can be different since fd's are based off smallest number
+//talk about how stdout can be different
+//talk about fds returnign the smallest number it is not incremental
 //talk about fd table
-    //how does fork and exec does with fds
+    //how does fork and exec do with fds
+
+Okay so now we understand what a Linux file is, but how is it actually handled for the programmer?
+What mechanisms streamlines the basic file operations?
+The core mechanism that this is accomplished is with file descriptors.
+The beautiful fact about this abstraction is that it is just an unsigned integer.
+This integer is what allows for such seamless behavior of piping, redirection, and sockets.
+As an example, stdin, stdout, and stderr are defined as 0, 1, and 2 in that order.
+When redirecting with `>>`, `>`, or `<`, it is actually redirecting the fd as a link to that file.
+But why is it an integer?
+You might know about fopen and how that gives you a FILE\*, so why is that not used?
+Well the integer correspondes to a file descriptor table that each process has.
+It is basically an array hence why the first three standard descriptors are 0, 1, and 2.
+
+//Talk about this at some point
+[Linux Process Injection](https://www.akamai.com/blog/security-research/the-definitive-guide-to-linux-process-injection)
 
 ### Linux File Permissions
 
@@ -72,8 +114,6 @@ Something like echoing 50 into the corresponding backlight file to change the br
 
 Linux has permissions for the owner, group, and everyone else.
 The way this is represented is essentially a number using the bits as the indications of what permissions are given.
-
-777
 read is 001
 write is 010
 execution is 100
@@ -81,26 +121,27 @@ execution is 100
 Since binary is used to convert into a numeric value it is used as a shorthand for a command like chmod.
 7 in binary is 111 which would give all permissions.
 3 in binary is 011 which could give reading and writing.
+777
 
 ### Links
 
 Links are the main concern of file security.
 Naive checking of a link will check the link itself rather than the file pointed to.
-Links can also then change mid way through execution if a Look Before you Leap approach is taken.
+Links can also then change mid-way through execution if a Look Before you Leap approach is taken.
 
 ### Windows File Handling
 
+//case insensitive
 Windows is. . . ugh.
 The problem with windows is that it is a hodgepodge of ideas combined into a single product, and this is because of the OOP design.
-This might just be my digression, but OOP designs such inheriently lead to such bloat.
-Objects are just so well defined that when you need to implement a completely new thing it just creates more objects.
-Except now this object is having to remember how to use other objects.
-Recently they have started to implement aspects of UNIX, but it is all under Windows.
-Windows has a distinction on files, devices, and 
-<case insensitive>
+Windows has a distinction on files, devices, and //I dunno other stuff I'll have to find
+This results in many APIs used for different file types.
 
 
 ### Windows Files Permissions
+
+//my god I'll have to go into Administrator, SYSTEM, Active directory and such
+//and all the other permission types
 
 ### File Security
 <talk about race conditions esspecially when checking for files>
@@ -126,15 +167,15 @@ With the way that a program interacts with the operating system it is better to 
 This is because calls for write() and read() are system calls that result in context switches.
 
 ### Dealing with File Paths
-<realtive paths vs absolute paths>
-<sanatizing file paths>
+//realtive paths vs absolute paths
+//sanatizing/canonicalization of file paths
 
 ### Directory Checking (Maybe have files and directories in one place)
-<something about directory permissions>
-<checking up the tree>
+//something about directory permissions
+//checking up the tree
 
 
-<umask funky>
+//umask funky
 
 S_IRWXU     0700    Owner read, write, execute
 S_IRUSR     0400    Owner read
@@ -153,6 +194,10 @@ CODES TO TEST
     Closing a standard stream and opening a file to replace that stream's fd
         since opening gives the lowest number it would replace that stream, so could input in that file be used as the stream?
 
-    using exec on a to run a program that inherits all closed fds so new files are opened as the standard streams
+    using exec on to run a program that inherits all closed fds so new files are opened as the standard streams
 
     Closing a standard stream and trying to print or take input.
+
+### Sources
+
+Secure Programming Cookbook for C and C++ by John Viega and Matt Messier
