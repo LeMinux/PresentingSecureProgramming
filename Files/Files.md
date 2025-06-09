@@ -82,32 +82,6 @@ struct file_operations {
 The important ones to note here are the open, release (close), read, and write function pointers.
 Pretty neat if you ask me!
 
-### Linux File Handling
-
-//talk about file descriptor
-//talk about /proc
-    //proc has its own fds per process stored in /proc/<PID>/fd/
-//talk about stdin, stdout, stderr
-//talk about how stdout can be different
-//talk about fds returnign the smallest number it is not incremental
-//talk about fd table
-    //how does fork and exec do with fds
-
-Okay so now we understand what a Linux file is, but how is it actually handled for the programmer?
-What mechanisms streamlines the basic file operations?
-The core mechanism that this is accomplished is with file descriptors.
-The beautiful fact about this abstraction is that it is just an unsigned integer.
-This integer is what allows for such seamless behavior of piping, redirection, and sockets.
-As an example, stdin, stdout, and stderr are defined as 0, 1, and 2 in that order.
-When redirecting with `>>`, `>`, or `<`, it is actually redirecting the fd as a link to that file.
-But why is it an integer?
-You might know about fopen and how that gives you a FILE\*, so why is that not used?
-Well the integer correspondes to a file descriptor table that each process has.
-It is basically an array hence why the first three standard descriptors are 0, 1, and 2.
-
-//Talk about this at some point
-[Linux Process Injection](https://www.akamai.com/blog/security-research/the-definitive-guide-to-linux-process-injection)
-
 ### Linux File Permissions
 
 //mention how exec for dirs is what allows stuff like ls and stat
@@ -123,6 +97,41 @@ Since binary is used to convert into a numeric value it is used as a shorthand f
 3 in binary is 011 which could give reading and writing.
 777
 
+### Linux File Handling
+
+//talk about file descriptor
+//talk about /proc
+    //proc has its own fds per process stored in /proc/<PID>/fd/
+//talk about stdin, stdout, stderr
+//talk about how stdout can be different
+//talk about fds returnign the smallest number it is not incremental
+//talk about fd table
+    //how does fork and exec do with fds
+
+Okay so now we understand what a Linux file is, but how does a programmer handle files?
+What mechanisms streamlines the basic file operations?
+The core mechanism that this is accomplished is with on Linux is file descriptors.
+The beautiful fact about this abstraction is that it is just an unsigned integer.
+As an example, stdin, stdout, and stderr are defined as 0, 1, and 2 in that order.
+But why is it an integer?
+You might know about fopen and how that gives you a FILE\*, so why is that not used?
+Well the integer corresponds to a file descriptor table that each process has.
+It is basically an array hence why the first three standard descriptors are 0, 1, and 2.
+This table can be seen under the /proc/\<pid\>/fd/ path.
+There is also a limit to how many file descriptors can be made which can be found at /proc/sys/fs/file-max.
+For all the process knows, this integer leads to what file it wants.
+At the OS level though, these file descriptors link to what it is.
+When redirecting with `>>`, `>`, or `<`, it is actually redirecting the fd as a link to that file.
+If you want to see this go to the ProcFD/ directory and run the show_fd.sh script.
+There, you should see the paths that the file descriptor links to.
+Now it not always a direct link to a path.
+Remember that are many types of files, and some files do not have named paths.
+If you notice with the pipe example it can't resolve the path for stdin since an anonymous pipe has no path.
+There are named pipes which do have a path and behave like files, but do not store data on disk.
+
+//Talk about this at some point
+[Linux Process Injection](https://www.akamai.com/blog/security-research/the-definitive-guide-to-linux-process-injection)
+
 ### Links
 
 Links are the main concern of file security.
@@ -137,17 +146,19 @@ The problem with windows is that it is a hodgepodge of ideas combined into a sin
 Windows has a distinction on files, devices, and //I dunno other stuff I'll have to find
 This results in many APIs used for different file types.
 
-
 ### Windows Files Permissions
 
 //my god I'll have to go into Administrator, SYSTEM, Active directory and such
 //and all the other permission types
 
 ### File Security
-<talk about race conditions esspecially when checking for files>
-    <it is better to let the OS do the magic>
-    <checking for existence then opening can be a race condition>
-    <links>
+//talk about race conditions esspecially when checking for files
+    //it is better to let the OS do the magic
+    //checking for existence then opening can be a race condition
+    //Checking stat before opening
+    //opening file then closing then opening again
+    //links
+    //file locks
 
 ### Deleting Files
 
@@ -155,10 +166,9 @@ It is probably well known now that deleting a file does not actually delete the 
 All deleting does is delete the pointers in the file system to the file.
 The actual data of the file remains until the operating system gets to that free block to rewrite it.
 This is what allows for file recovery tools to recover deleted files.
-<erasing file securely>
 
 ### Leaving Files Open
-<talk about leaving files open>
+//talk about leaving files open
 
 ### Secretive Buffers
 
@@ -167,13 +177,15 @@ With the way that a program interacts with the operating system it is better to 
 This is because calls for write() and read() are system calls that result in context switches.
 
 ### Dealing with File Paths
+
 //realtive paths vs absolute paths
 //sanatizing/canonicalization of file paths
 
-### Directory Checking (Maybe have files and directories in one place)
+### Directory Checking
+
+//probably will move this into the directory chapter
 //something about directory permissions
 //checking up the tree
-
 
 //umask funky
 
