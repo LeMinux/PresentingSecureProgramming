@@ -1,0 +1,3 @@
+Failed to resolve 0
+1 -> /dev/pts/2
+2 -> /dev/pts/2
