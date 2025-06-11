@@ -105,8 +105,6 @@ Since binary is used to convert into a numeric value it is used as a shorthand f
 //talk about stdin, stdout, stderr
 //talk about how stdout can be different
 //talk about fds returnign the smallest number it is not incremental
-//talk about fd table
-    //how does fork and exec do with fds
 
 Okay so now we understand what a Linux file is, but how does a programmer handle files?
 What mechanisms streamlines the basic file operations?
@@ -117,19 +115,43 @@ But why is it an integer?
 You might know about fopen and how that gives you a FILE\*, so why is that not used?
 Well the integer corresponds to a file descriptor table that each process has.
 It is basically an array hence why the first three standard descriptors are 0, 1, and 2.
-This table can be seen under the /proc/\<pid\>/fd/ path.
-There is also a limit to how many file descriptors can be made which can be found at /proc/sys/fs/file-max.
+Any other files that get opened will get the next lowest number.
 For all the process knows, this integer leads to what file it wants.
 At the OS level though, these file descriptors link to what it is.
 When redirecting with `>>`, `>`, or `<`, it is actually redirecting the fd as a link to that file.
+This can be seen under the /proc/\<pid\>/fd/ path.
 If you want to see this go to the ProcFD/ directory and run the show_fd.sh script.
-There, you should see the paths that the file descriptor links to.
-Now it not always a direct link to a path.
+There, you should see the paths that the standard descriptor links to and the fd of the new file.
+Now it not always a direct link to a file path.
 Remember that are many types of files, and some files do not have named paths.
 If you notice with the pipe example it can't resolve the path for stdin since an anonymous pipe has no path.
-There are named pipes which do have a path and behave like files, but do not store data on disk.
+The same behavior would apply for unnamed sockets as well.
+There are named pipes and sockets which do have a path and behave like regular files, but do not store data on disk.
+
+That little experiment goes to show that a file on Linux is just an integer with some kernel magic behind it.
+However, let us take a closer look at how a file descriptor is given.
+It obtains the next lowest number.
+So if the 5th file opened (fd of 4) were to close and there are already 10 open files the next fd to be given would be 4 since that is the lowest compared to 10.
+```
+/* remember 0, 1, 2 are the standard descriptors */
+
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, x]
+
+/* close 5th file */
+
+[0, 1, 2, 3, x, 5, 6, 7, 8, 9, x]
+
+/* open new file */
+
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, x]
+```
+
+This caveat is important to know because this also applies to the standard file descriptors.
+If 0, 1, or 2 were to close due to some bug, any new file would get a standard file descriptor.
+This would mean that if a file were to be opened as stdout anything printed would go that file instead and would mess up the file.
 
 //Talk about this at some point
+There is also a limit to how many file descriptors can be made which can be found at /proc/sys/fs/file-max.
 [Linux Process Injection](https://www.akamai.com/blog/security-research/the-definitive-guide-to-linux-process-injection)
 
 ### Links
@@ -137,6 +159,11 @@ There are named pipes which do have a path and behave like files, but do not sto
 Links are the main concern of file security.
 Naive checking of a link will check the link itself rather than the file pointed to.
 Links can also then change mid-way through execution if a Look Before you Leap approach is taken.
+
+### File Descriptors and Process Execution
+
+//talk about fd table
+//how does fork and exec do with fds
 
 ### Windows File Handling
 
@@ -151,7 +178,7 @@ This results in many APIs used for different file types.
 //my god I'll have to go into Administrator, SYSTEM, Active directory and such
 //and all the other permission types
 
-### File Security
+### General File Security
 //talk about race conditions esspecially when checking for files
     //it is better to let the OS do the magic
     //checking for existence then opening can be a race condition
