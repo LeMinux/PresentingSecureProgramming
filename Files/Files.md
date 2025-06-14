@@ -31,7 +31,7 @@ It is pretty well-know that Linux has a principle of treating "everything as a f
 Your devices, your memory, your configs, your standard input and output, processes, and mounted file systems are "files".
 But how could this possibly be?
 Aren't files a logical location of binary data on disk?
-Well the previous saying is not entirely true.
+Well the previous statement is not entirely true.
 A more accurate saying would be to say "everything can be treated as a file".
 There is a singular common interface where a program can use open(), close(), read(), and write() no matter the "file".
 The actual implementation is abstracted away, and the program just has to worry about a byte stream.
@@ -85,17 +85,75 @@ Pretty neat if you ask me!
 ### Linux File Permissions
 
 //mention how exec for dirs is what allows stuff like ls and stat
+//talk about suid and guid
 
-Linux has permissions for the owner, group, and everyone else.
-The way this is represented is essentially a number using the bits as the indications of what permissions are given.
-read is 001
-write is 010
-execution is 100
+Before we get into how to handle files on Linux we need to understand how permissions work on Linux.
+The permissions are split into ownership and the permissions.
+For ownership, there is the owner of the file, group ownership, and everyone else.
+For permissions, they are read, write, and execute.
+Using ls with the list flag `ls -l` will show all the necessary info.
+It will give something like this `-rwxrw-r--  1 User Group   148 Jun  7 17:30  bigsleep.c`.
+Here the permissions are given by the `-rwxrw-r--` string.
+The beginning dash is there to show the file type.
+A link would have l and a directory would have a d.
+Excluding the file type, the permissions are read in a set of 3.
+The first three is for the owner, the second three is for the group, and the last three are for everyone else.
+Using the previous example the owner has all permissions, the group has read and write, and everyone has read permissions.
+If you are still confused I'll provide some other examples below.
+```
+-rw-r-----
+    read & write for owner
+    Only read for groups
+T    no permissions for everyone else
 
-Since binary is used to convert into a numeric value it is used as a shorthand for a command like chmod.
-7 in binary is 111 which would give all permissions.
-3 in binary is 011 which could give reading and writing.
-777
+-rw-r--r--
+    read & write for owner
+    Only read for groups
+    Only read for everyone else
+
+----------
+    No permissions for owner, group, or everyone else
+
+-rwxrwxrwx
+    owner, group, and everyone has read, write, and execute
+
+drwxr-xr-x
+    All permissions for the owner
+    read and excute for the group
+    read and excute for everyone
+    File is a directory
+```
+
+You may also see these permissions represented in their numerical form especially when setting permissions with chmod.
+In their numerical representation they are 3 bits with 001 (1) as read, 010 (2) as write, and 100 (4) as execution.
+It is basically using the bits of the number as the boolean flags instead of having 3 separate booleans.
+```
+7 (111) set exec, write, and read
+3 (011) set write and read
+5 (101) set exec and read
+```
+
+#### Suid and Guid bits
+
+//talk about how to safely drop permissions
+    //permanent and temporary
+//show a program that has setuid
+
+Remember how ownership of a file was determined by the user and group?
+Well these setuid bits change that behavior.
+What these bits do is give you the permissions of the owning user or the owning group.
+This is where permissions on Linux become more complicated because these bits reveal the underlying system on how permissions work.
+When a process is started it is actually given 3 IDs for the user and group.
+These IDs are the effective, real, and saved ID
+The effective user ID is what determines the actual permissions to enforce.
+The real ID is who ran the program.
+The saved ID is used to switch between privileges.
+For normal programs, all the IDs are set to who ever started the process.
+Since all the bits are the same it does not allow for the altering of permissions unless the process is run by root.
+Setuid bits change the effective and saved ID to the owning user or group with the real ID to who started the process.
+This would mean if the user Jimbo ran a program that was owned by root with setuid the effective and saved IDs are root, but the real ID is Jimbo.
+It is incredibly dangerous to use setuid and setguid bits, and it should be avoided at all costs.
+If they must be used, drop the permissions as fast as possible preferably permanently.
 
 ### Linux File Handling
 
@@ -105,21 +163,26 @@ Since binary is used to convert into a numeric value it is used as a shorthand f
 //talk about stdin, stdout, stderr
 //talk about how stdout can be different
 //talk about fds returnign the smallest number it is not incremental
+//mention redirecting any file descriptor
 
 Okay so now we understand what a Linux file is, but how does a programmer handle files?
 What mechanisms streamlines the basic file operations?
 The core mechanism that this is accomplished is with on Linux is file descriptors.
 The beautiful fact about this abstraction is that it is just an unsigned integer.
-As an example, stdin, stdout, and stderr are defined as 0, 1, and 2 in that order.
-But why is it an integer?
-You might know about fopen and how that gives you a FILE\*, so why is that not used?
-Well the integer corresponds to a file descriptor table that each process has.
-It is basically an array hence why the first three standard descriptors are 0, 1, and 2.
+This integer corresponds to an index in the file descriptor table that is unique to each process.
+These descriptors can be listed by this command `ls -al /proc/<pid of process>/fd/`.
+Each process will have 0, 1, and 2 descriptors which corresponds to stdin, stdout, and stderr.
 Any other files that get opened will get the next lowest number.
-For all the process knows, this integer leads to what file it wants.
-At the OS level though, these file descriptors link to what it is.
+Processes can have identical number descriptor since files are localized to them.
+It is the kernel that handles what the descriptor links to as well as the permission desired like read-only/write-only.
+The operating system has a limit to how many descriptors a process and the system can have.
+For processes these limits can be found with `ulimit -Sn`(soft limit) and `ulimit -Hn`(hard limit).
+The global system limit is found under `/proc/sys/fs/file-max`.
+The soft limit can be controlled by the user and is the limit for that session.
+The hard limit is an absolute maximum that can not be surpassed and is only modifiable by root.
+
+At the OS level though, these file descriptors link to the actual file.
 When redirecting with `>>`, `>`, or `<`, it is actually redirecting the fd as a link to that file.
-This can be seen under the /proc/\<pid\>/fd/ path.
 If you want to see this go to the ProcFD/ directory and run the show_fd.sh script.
 There, you should see the paths that the standard descriptor links to and the fd of the new file.
 Now it not always a direct link to a file path.
@@ -178,7 +241,20 @@ This results in many APIs used for different file types.
 //my god I'll have to go into Administrator, SYSTEM, Active directory and such
 //and all the other permission types
 
+| Permission      | Description |
+| :-------------: | :---------: |
+| DELETE          | The ability to delete the object |
+| READ_CONTROL    | The ability to read the object’s security descriptor, not including its SACL |
+| SYNCHRONIZE     | The ability for a thread to wait for the object to be put into the signaled state |
+| WRITE_DAC       | The ability to modify the object’s DACL |
+| WRITE_OWNER     | The ability to set the object’s owner |
+| GENERIC_READ    | The ability to read from or query the object |
+| GENERIC_WRITE   | The ability to write to or modify the object |
+| GENERIC_EXECUTE | The ability to execute the object (applies primarily to files) |
+| GENERIC_ALL     | Full control |
+
 ### General File Security
+
 //talk about race conditions esspecially when checking for files
     //it is better to let the OS do the magic
     //checking for existence then opening can be a race condition
@@ -195,6 +271,7 @@ The actual data of the file remains until the operating system gets to that free
 This is what allows for file recovery tools to recover deleted files.
 
 ### Leaving Files Open
+
 //talk about leaving files open
 
 ### Secretive Buffers
