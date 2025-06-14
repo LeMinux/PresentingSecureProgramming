@@ -57,6 +57,11 @@ main() {
     echo "$exec > $device"
     ./"$exec" > "$device"
     printIfSuccess
+
+    #redirect a non-standard fd
+    echo "$exec 3> $redir_file"
+    ./"$exec" 3> heheheha.txt
+    printIfSuccess
 }
 
 main
