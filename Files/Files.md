@@ -23,6 +23,7 @@ Unlike paper which could simply be grabbed, binary data needs interpretation on 
 Therefore, a system had to be placed to define the abstraction of a file, the boundaries of files, and what collections exist.
 The identity of what creates a file or folder is so intertwined with the abstraction of the system that they cannot exist without the system.
 This would mean that a system designed around a GUI vs a CLI would have different implementations on files.
+As well as a system designed for multiple users vs a singular user.
 It is this abstraction that determines how to properly handle files and folders thus affecting security.
 
 ### Linux Files
@@ -86,52 +87,95 @@ Pretty neat if you ask me!
 
 //mention how exec for dirs is what allows stuff like ls and stat
 //talk about suid and guid
+//talk about precedence
 
-Before we get into how to handle files on Linux we need to understand how permissions work on Linux.
-The permissions are split into ownership and the permissions.
-For ownership, there is the owner of the file, group ownership, and everyone else.
+Before we get into how to handle files on Linux, we need to understand how permissions work on Linux.
+Permissions are the main way the operating system enforces its rules on a process.
+It is important not just for finding out if a file is operable, but also how to correctly set permissions securely.
+The permissions are split into ownership and the permission types.
+For ownership, there is the owner of the file, group ownership, and everyone else/other/world.
 For permissions, they are read, write, and execute.
-Using ls with the list flag `ls -l` will show all the necessary info.
-It will give something like this `-rwxrw-r--  1 User Group   148 Jun  7 17:30  bigsleep.c`.
-Here the permissions are given by the `-rwxrw-r--` string.
-The beginning dash is there to show the file type.
-A link would have l and a directory would have a d.
-Excluding the file type, the permissions are read in a set of 3.
-The first three is for the owner, the second three is for the group, and the last three are for everyone else.
-Using the previous example the owner has all permissions, the group has read and write, and everyone has read permissions.
-If you are still confused I'll provide some other examples below.
+The permissions also have a precedence from owner to group to other.
+This means that even if the permissions of other were to allow everything, if the group permissions only allows for reading people part of that group can only read.
+To find the permissions of a file, ls with the list flag `ls -l` will show all the necessary info.
+It will give something like `-rwxrw-r--  1 User Group   148 Jun  7 17:30  bigsleep.c`.
+The table below shows what each segment means.
+| File Type | Permission String | Owning User | Owning Group | File Size | Last Modification Date | Filename |
+| :--------:| :---------------: | :---------: | :----------: | :-------: | :--------------------: | :------: |
+| - | rwxrw-r-- | Jimbo | Office | 148 | Jun 7 17:30 | bigsleep.c |
+Here the permissions are given by the `rwxrw-r--` string with the owning user as Jimbo and the owning group as Office.
+The permission string is read in sets of 3 in the order of owner, group, and everyone else.
+In this example the owner has all permissions, the group has read and write, and other has read permissions.
+If you are still confused there are more examples below.
 ```
 -rw-r-----
     read & write for owner
     Only read for groups
-T    no permissions for everyone else
+    no permissions for everyone else
+    Normal file
 
 -rw-r--r--
     read & write for owner
     Only read for groups
-    Only read for everyone else
+    Only read for world
+    Normal file
 
 ----------
-    No permissions for owner, group, or everyone else
+    No permissions for owner, group, or other
+    Normal file
 
 -rwxrwxrwx
-    owner, group, and everyone has read, write, and execute
+    owner, group, and everyone else has read, write, and execute
+    Normal file
 
 drwxr-xr-x
     All permissions for the owner
     read and excute for the group
-    read and excute for everyone
+    read and excute for everyone else
     File is a directory
 ```
 
 You may also see these permissions represented in their numerical form especially when setting permissions with chmod.
-In their numerical representation they are 3 bits with 001 (1) as read, 010 (2) as write, and 100 (4) as execution.
-It is basically using the bits of the number as the boolean flags instead of having 3 separate booleans.
+In their numerical representation they are an octal value (3 bits) with 001 (1) as read, 010 (2) as write, and 100 (4) as execution.
+Any number between 0 and 7 can be used to represent the permissions since it is using the location of the bits.
+If we use the previous permissions string example here it would look like this.
 ```
 7 (111) set exec, write, and read
-3 (011) set write and read
 5 (101) set exec and read
+3 (011) set write and read
+1 (001) set read
+
+
+310
+    read & write for owner
+    Only read for groups
+    no permissions for everyone else
+    Normal file
+
+311
+    read & write for owner
+    Only read for groups
+    Only read for world
+    Normal file
+
+000
+    No permissions for owner, group, or other
+    Normal file
+
+777
+    owner, group, and everyone else has read, write, and execute
+    Normal file
+
+755
+    All permissions for the owner
+    read and excute for the group
+    read and excute for everyone else
 ```
+
+#### Root
+
+Root is an exception to the permission system.
+Root can conduct any action on the system regardless of the actual permissions since they supersede all.
 
 #### Suid and Guid bits
 
@@ -217,11 +261,13 @@ This would mean that if a file were to be opened as stdout anything printed woul
 There is also a limit to how many file descriptors can be made which can be found at /proc/sys/fs/file-max.
 [Linux Process Injection](https://www.akamai.com/blog/security-research/the-definitive-guide-to-linux-process-injection)
 
-### Links
+#### Links
 
 Links are the main concern of file security.
-Naive checking of a link will check the link itself rather than the file pointed to.
+They take special care to handle as naive checking will create a security vulnerability.
 Links can also then change mid-way through execution if a Look Before you Leap approach is taken.
+
+#### Device Files
 
 ### File Descriptors and Process Execution
 
