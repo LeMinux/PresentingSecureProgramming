@@ -1,4 +1,4 @@
-## File Security
+## Linux File Security
 
 ### What Are Files
 
@@ -98,11 +98,11 @@ For permissions, they are read, write, and execute.
 The permissions also have a precedence from owner to group to other.
 This means that even if the permissions of other were to allow everything, if the group permissions only allows for reading people part of that group can only read.
 To find the permissions of a file, ls with the list flag `ls -l` will show all the necessary info.
-It will give something like `-rwxrw-r--  1 User Group   148 Jun  7 17:30  bigsleep.c`.
+It will give something like `-rwxrw-r--  1 Jimbo Office   148 Jun  7 17:30  bigsleep.c`.
 The table below shows what each segment means.
-| File Type | Permission String | Owning User | Owning Group | File Size | Last Modification Date | Filename |
-| :--------:| :---------------: | :---------: | :----------: | :-------: | :--------------------: | :------: |
-| - | rwxrw-r-- | Jimbo | Office | 148 | Jun 7 17:30 | bigsleep.c |
+| File Type | Permission String | Number of Hard Links | Owning User | Owning Group | File Size | Last Modification Date | Filename |
+| :--------:| :---------------: | :------------------: |:---------: | :----------: | :-------: | :--------------------: | :------: |
+| - | rwxrw-r-- | 1 | Jimbo | Office | 148 | Jun 7 17:30 | bigsleep.c |
 Here the permissions are given by the `rwxrw-r--` string with the owning user as Jimbo and the owning group as Office.
 The permission string is read in sets of 3 in the order of owner, group, and everyone else.
 In this example the owner has all permissions, the group has read and write, and other has read permissions.
@@ -172,10 +172,39 @@ If we use the previous permissions string example here it would look like this.
     read and excute for everyone else
 ```
 
+#### Owning a File
+
+Now that you can read the permissions, what does it mean to own a file beyond the permissions?
+As an example, what happens if the owner is locked out of their own file because it has the permissions of 061?
+Here the owner cannot read, write, or execute this file, so are they just screwed?
+Luckily, they are not because the owning user can alter the permissions of files they own.
+So the owning user can simply use `chmod 761 <the file>` to get the permissions back.
+They can not change the owning user or owning group of the file with chown though since that is a root action.
+
+#### Owning a Directory
+
+#### Permissions Along Directory Path
+
+### Directory Checking
+
+//probably will move this into the directory chapter
+//something about directory permissions
+//checking up the tree
+
+#### Access Control Lists (ACL)
+
 #### Root
 
 Root is an exception to the permission system.
-Root can conduct any action on the system regardless of the actual permissions since they supersede all.
+Since root users need to be able to alter system state, they can do anything on the system.
+This includes changing file ownership, file permissions, zeroing out a storage device, mounting a file system, etc.
+Even with a file that has 000 permissions (even owned by root), the root user can still read, write, and execute the program.
+It makes sense though since a root user should not be prevented from removing a file and such.
+Users can obtain superuser permissions if they are set to have them as specified in the /etc/sudoers file.
+Although depending on how permissions are set in sudoers a user or group could only have certain root commands available.
+Root is incredibly dangerous to use all willy-nilly, so only use root only when strictly necessary.
+The utmost care should be taken to avoid an attacker creating a root shell allowing them to create wreak havoc on the system.
+Security involving root becomes a lot more important in the next section.
 
 #### Suid and Guid bits
 
@@ -193,11 +222,23 @@ The effective user ID is what determines the actual permissions to enforce.
 The real ID is who ran the program.
 The saved ID is used to switch between privileges.
 For normal programs, all the IDs are set to who ever started the process.
-Since all the bits are the same it does not allow for the altering of permissions unless the process is run by root.
-Setuid bits change the effective and saved ID to the owning user or group with the real ID to who started the process.
+Since all the bits are the same it does not allow for the altering of permissions unless the process was run by root.
+Setuid bits change the effective and saved ID to the owning user or group with the real ID set to who started the process.
 This would mean if the user Jimbo ran a program that was owned by root with setuid the effective and saved IDs are root, but the real ID is Jimbo.
+
 It is incredibly dangerous to use setuid and setguid bits, and it should be avoided at all costs.
 If they must be used, drop the permissions as fast as possible preferably permanently.
+
+To figure out if a program has a setuid or setguid bit active the `ls -l` will show this.
+If the setuid bit is set it will display an 's' or an 'S' if setuid is set without a way to execute it. in the permissions string like so `-rwSrwSr--`.
+In this example, the setuid and setguid bit is set.
+The `file` command can also be used to see if setuid/setguid is set.
+If the bits are set, it will print `setuid` and/or `setguid`.
+Just like normal permissions setuid/setguid also has a numerical octal value.
+Their number is specified ahead of the standard 3 numbers with 100 (4) as setuid, 010 (2) as setguid, and 001 (1) as sticky.
+They would be represented like so `6755`
+This numerical representation is good to know for the find command with system administration.
+Using a command like `find / -perm /4000` will scan the entire system finding any file that has setuid.
 
 ### Linux File Handling
 
@@ -273,69 +314,6 @@ Links can also then change mid-way through execution if a Look Before you Leap a
 
 //talk about fd table
 //how does fork and exec do with fds
-
-### Windows File Handling
-
-//case insensitive
-Windows is. . . ugh.
-The problem with windows is that it is a hodgepodge of ideas combined into a single product, and this is because of the OOP design.
-Windows has a distinction on files, devices, and //I dunno other stuff I'll have to find
-This results in many APIs used for different file types.
-
-### Windows Files Permissions
-
-//my god I'll have to go into Administrator, SYSTEM, Active directory and such
-//and all the other permission types
-
-| Permission      | Description |
-| :-------------: | :---------: |
-| DELETE          | The ability to delete the object |
-| READ_CONTROL    | The ability to read the object’s security descriptor, not including its SACL |
-| SYNCHRONIZE     | The ability for a thread to wait for the object to be put into the signaled state |
-| WRITE_DAC       | The ability to modify the object’s DACL |
-| WRITE_OWNER     | The ability to set the object’s owner |
-| GENERIC_READ    | The ability to read from or query the object |
-| GENERIC_WRITE   | The ability to write to or modify the object |
-| GENERIC_EXECUTE | The ability to execute the object (applies primarily to files) |
-| GENERIC_ALL     | Full control |
-
-### General File Security
-
-//talk about race conditions esspecially when checking for files
-    //it is better to let the OS do the magic
-    //checking for existence then opening can be a race condition
-    //Checking stat before opening
-    //opening file then closing then opening again
-    //links
-    //file locks
-
-### Deleting Files
-
-It is probably well known now that deleting a file does not actually delete the file.
-All deleting does is delete the pointers in the file system to the file.
-The actual data of the file remains until the operating system gets to that free block to rewrite it.
-This is what allows for file recovery tools to recover deleted files.
-
-### Leaving Files Open
-
-//talk about leaving files open
-
-### Secretive Buffers
-
-Most operations relating to a file actually use an internal buffer for efficiency.
-With the way that a program interacts with the operating system it is better to conduct bulk writes than many smaller ones.
-This is because calls for write() and read() are system calls that result in context switches.
-
-### Dealing with File Paths
-
-//realtive paths vs absolute paths
-//sanatizing/canonicalization of file paths
-
-### Directory Checking
-
-//probably will move this into the directory chapter
-//something about directory permissions
-//checking up the tree
 
 //umask funky
 
