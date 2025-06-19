@@ -85,12 +85,9 @@ Pretty neat if you ask me!
 
 ### Linux File Permissions
 
-//mention how exec for dirs is what allows stuff like ls and stat
-//talk about suid and guid
-//talk about precedence
-
 Before we get into how to handle files on Linux, we need to understand how permissions work on Linux.
-Permissions are the main way the operating system enforces its rules on a process.
+Since Linux uses a multi-user file system, the OS needs to have some way of enforcing its rules.
+Permissions are the main way this is done, and it is a core security principle.
 It is important not just for finding out if a file is operable, but also how to correctly set permissions securely.
 The permissions are split into ownership and the permission types.
 For ownership, there is the owner of the file, group ownership, and everyone else/other/world.
@@ -103,7 +100,7 @@ The table below shows what each segment means.
 | File Type | Permission String | Number of Hard Links | Owning User | Owning Group | File Size | Last Modification Date | Filename |
 | :--------:| :---------------: | :------------------: |:---------: | :----------: | :-------: | :--------------------: | :------: |
 | - | rwxrw-r-- | 1 | Jimbo | Office | 148 | Jun 7 17:30 | bigsleep.c |
-Here the permissions are given by the `rwxrw-r--` string with the owning user as Jimbo and the owning group as Office.
+Here the permissions are given in symbolic mode with the `rwxrw-r--` string with the owning user as Jimbo and the owning group as Office.
 The permission string is read in sets of 3 in the order of owner, group, and everyone else.
 In this example the owner has all permissions, the group has read and write, and other has read permissions.
 If you are still confused there are more examples below.
@@ -136,6 +133,7 @@ drwxr-xr-x
 ```
 
 You may also see these permissions represented in their numerical form especially when setting permissions with chmod.
+This form of setting the mode is known as the absolute mode.
 In their numerical representation they are an octal value (3 bits) with 001 (1) as read, 010 (2) as write, and 100 (4) as execution.
 Any number between 0 and 7 can be used to represent the permissions since it is using the location of the bits.
 If we use the previous permissions string example here it would look like this.
@@ -172,27 +170,6 @@ If we use the previous permissions string example here it would look like this.
     read and excute for everyone else
 ```
 
-#### Owning a File
-
-Now that you can read the permissions, what does it mean to own a file beyond the permissions?
-As an example, what happens if the owner is locked out of their own file because it has the permissions of 061?
-Here the owner cannot read, write, or execute this file, so are they just screwed?
-Luckily, they are not because the owning user can alter the permissions of files they own.
-So the owning user can simply use `chmod 761 <the file>` to get the permissions back.
-They can not change the owning user or owning group of the file with chown though since that is a root action.
-
-#### Owning a Directory
-
-#### Permissions Along Directory Path
-
-### Directory Checking
-
-//probably will move this into the directory chapter
-//something about directory permissions
-//checking up the tree
-
-#### Access Control Lists (ACL)
-
 #### Root
 
 Root is an exception to the permission system.
@@ -205,6 +182,100 @@ Although depending on how permissions are set in sudoers a user or group could o
 Root is incredibly dangerous to use all willy-nilly, so only use root only when strictly necessary.
 The utmost care should be taken to avoid an attacker creating a root shell allowing them to create wreak havoc on the system.
 Security involving root becomes a lot more important in the next section.
+
+
+#### Owning a File
+
+Now that you can read the permissions, what does it mean to own a file?
+Of course the permissions determine what can be done, but what happens if an owner is locked out of their file?
+If a file were to have 061 permissions the owner cannot read, write, or execute so are they screwed?
+Luckily, they are not because the owning user can alter the permissions of files they own.
+So the owning user can simply use `chmod 761 <the file>` to get the permissions back.
+The owning user actually has a bit more control over their files since it is in the realm of a file system.
+An owning user can conduct these actions to files they own.
+- Change file permissions (chmod)
+- Change group ownership to groups the owner is in (chgrp)
+- Rename
+- Delete
+However, this is assuming the user is able to get to their file.
+
+#### Owning a Directory
+
+//mention how exec for dirs is what allows stuff like ls and stat
+//mention how it's the directory that determiens deleting and renaming
+//example file owned by use in /, but can't move because no w perm
+//Talk about how you can list within your own directory even if the directory inside doesn't have read
+
+The permissions of directories really show the importance of understanding that files live within a file system.
+It is what allows for multiple users to have shared or separate segments of the file system.
+Now because directories are a special kind of file the permissions behave slightly differently.
+For normal files, the permissions say what they do.
+If read is given, the file can be opened in vim (or some other text editor).
+If write is given, the user can modify the file.
+They don't necessarily need to know what is in the file they can overwrite it with `echo "my file now" > some_file.txt`.
+If execute is given, the user can try to use the shell to execute the file.
+Directories are not normal files, so the permissions are different.
+The execute bit become a lot more important since a lot of action for directories require this bit to be set.
+According to the man page for chmod, the +x bit for directories permits searching inside.
+For example, to be able to write into a directory -wx is needed instead of just -w-
+ls as well will need r-x instead of r--.
+A directory can still have just read and just write, but commands will not work as intended.
+//SHOW CODE FOR THIS IT'S PRETTY NEAT
+You can still use ls on a directory with r--, but since -x is what gives the ability to search inside the command half completes the job.
+ls will still show the contents by saying it couldn't access the file at that path, but using the -l flag won't reveal any information.
+Tab completion would also still work on a directory with just r--, so it can be used as a poor man's ls.
+The write bit would give you permission to rename, move, and delete files, but it can only be done if permission to execute is given.
+The execute bit is what allows a user to change the working directory into it, and gives access to the files.
+```
+700 (rwx------)
+Can create, delete, rename, and list files
+
+500 (r-x------)
+Can only list directory contents.
+
+300 (-wx------)
+Can only create, delete, and rename files
+
+100 (--x------)
+Can use/resolve the directory.
+```
+A directory is basically a list of inodes.
+If you think about these permissions on how it would affect a list it makes a bit more sense.
+The executable bit is what reveals these inodes with the other bits determining what can be done with them.
+
+Funky little examples (excluding /home/Jimbo/Documents)
+//Make programs to show this
+//show that ls needs exec
+The entire directory path and their permissions have to allow for a user to access the file they want, and it is used as a way to enforce security.
+The easiest way to think about how permissions work for a directory is the think of them as a step.
+The file path shows all the steps you will need to take with each step needing to grant you access to move forward.
+This example path and permissions in absolute form will be used as an example.
+
+##### Permissions Along Directory Path
+```
+/home/Jimbo/SomeDir/file.txt
+
+/           (755 root, root)
+home        (755 root, root)
+Jimbo       (750 Jimbo, Jimbo)
+Documents   (755 Jimbo, Jimbo)
+file.txt    (664 Jimbo, Jimbo)
+```
+
+
+//probably will move this into the directory chapter
+//something about directory permissions
+//checking up the tree
+
+##### Sticky Bit
+
+#### Links
+
+Links
+They take special care to handle as naive checking will create a security vulnerability.
+Links can also then change mid-way through execution if a Look Before you Leap approach is taken.
+
+#### Access Control Lists (ACL)
 
 #### Suid and Guid bits
 
@@ -229,9 +300,12 @@ This would mean if the user Jimbo ran a program that was owned by root with setu
 It is incredibly dangerous to use setuid and setguid bits, and it should be avoided at all costs.
 If they must be used, drop the permissions as fast as possible preferably permanently.
 
-To figure out if a program has a setuid or setguid bit active the `ls -l` will show this.
-If the setuid bit is set it will display an 's' or an 'S' if setuid is set without a way to execute it. in the permissions string like so `-rwSrwSr--`.
-In this example, the setuid and setguid bit is set.
+To figure out if a program has a setuid or setguid bit active the `ls -l` can be used.
+If the setuid bit is set it will display an 's' or an 'S' in the executable bit position in the permissions string like so `-rwsrwSr--`.
+There is a difference in lower case and upper case s.
+Since setuid is taking the place of the executable bit, to show that execution privileges are given a lower case s is used while an upper case S shows no execution privileges.
+In the example given, the setuid and setguid bit is set, but the group does not have execution privileges set.
+The intention of setuid bits is to act as the owning user/group, so an upper case S does not make sense to have.
 The `file` command can also be used to see if setuid/setguid is set.
 If the bits are set, it will print `setuid` and/or `setguid`.
 Just like normal permissions setuid/setguid also has a numerical octal value.
@@ -249,8 +323,10 @@ Using a command like `find / -perm /4000` will scan the entire system finding an
 //talk about how stdout can be different
 //talk about fds returnign the smallest number it is not incremental
 //mention redirecting any file descriptor
+//talk about handling links
 
-Okay so now we understand what a Linux file is, but how does a programmer handle files?
+Okay so now we understand what a Linux file is and permissions, so what does this mean for the programmer?
+All of this talk to mention 
 What mechanisms streamlines the basic file operations?
 The core mechanism that this is accomplished is with on Linux is file descriptors.
 The beautiful fact about this abstraction is that it is just an unsigned integer.
@@ -301,12 +377,6 @@ This would mean that if a file were to be opened as stdout anything printed woul
 //Talk about this at some point
 There is also a limit to how many file descriptors can be made which can be found at /proc/sys/fs/file-max.
 [Linux Process Injection](https://www.akamai.com/blog/security-research/the-definitive-guide-to-linux-process-injection)
-
-#### Links
-
-Links are the main concern of file security.
-They take special care to handle as naive checking will create a security vulnerability.
-Links can also then change mid-way through execution if a Look Before you Leap approach is taken.
 
 #### Device Files
 
