@@ -27,3 +27,7 @@ This results in many APIs used for different file types.
 | GENERIC_WRITE   | The ability to write to or modify the object |
 | GENERIC_EXECUTE | The ability to execute the object (applies primarily to files) |
 | GENERIC_ALL     | Full control |
+
+### Links
+
+

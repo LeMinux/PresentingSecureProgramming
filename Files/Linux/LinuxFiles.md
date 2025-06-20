@@ -34,8 +34,9 @@ But how could this possibly be?
 Aren't files a logical location of binary data on disk?
 Well the previous statement is not entirely true.
 A more accurate saying would be to say "everything can be treated as a file".
-There is a singular common interface where a program can use open(), close(), read(), and write() no matter the "file".
-The actual implementation is abstracted away, and the program just has to worry about a byte stream.
+This means there is a singular common interface that programs use to interact with a file.
+Common operations like open(), close(), read(), and write() can be done regardless of what the file is.
+The actual implementation is abstracted away, and the program just has to worry about handling.
 Naturally, this means Linux has different kinds of files which are specified in the man page for find.
 They are shown below.
 ```
@@ -82,6 +83,66 @@ struct file_operations {
 ```
 The important ones to note here are the open, release (close), read, and write function pointers.
 Pretty neat if you ask me!
+
+#### Inodes
+
+However, the kernel needs a definition of what a file is.
+It is good to know how the kernel handles different files, but information about the file has to be stored.
+Metadata as it is called.
+This is where the file system comes into play by storing metadata about a file and defining what a file is.
+On Linux, a file is defined by an inode (index node).
+There exists an inode table that is unique per file system, so this would mean /dev/sda1 or /dev/sdb1 would contain different tables since files systems are per partition.
+Since this can lead to two identical inode numbers, the inode number is a combination of the device ID and the inode number.
+The device id itself is split into a major and minor ID that defines the device type and class.
+The inode number itself is an incrementing 32-bit unsigned number which creates about 4 billion inodes.
+As the name index node implies, it is effectively an index in a large array.
+This large array defines all the metadata asoociated with a file.
+The inode will point to information like the file permissions, link count, and ownership.
+All information stored can be found in the stat struct in the stat (2) man page shown below.
+```
+struct stat {
+    dev_t     st_dev;         /* ID of device containing file */
+    ino_t     st_ino;         /* Inode number */
+    mode_t    st_mode;        /* File type and mode */
+    nlink_t   st_nlink;       /* Number of hard links */
+    uid_t     st_uid;         /* User ID of owner */
+    gid_t     st_gid;         /* Group ID of owner */
+    dev_t     st_rdev;        /* Device ID (if special file) */
+    off_t     st_size;        /* Total size, in bytes */
+    blksize_t st_blksize;     /* Block size for filesystem I/O */
+    blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
+
+    /* Since Linux 2.6, the kernel supports nanosecond
+       precision for the following timestamp fields.
+       For the details before Linux 2.6, see NOTES. */
+
+    struct timespec st_atim;  /* Time of last access */
+    struct timespec st_mtim;  /* Time of last modification */
+    struct timespec st_ctim;  /* Time of last status change */
+
+    #define st_atime st_atim.tv_sec      /* Backward compatibility */
+    #define st_mtime st_mtim.tv_sec
+    #define st_ctime st_ctim.tv_sec
+};
+```
+All of this information is also available in a readable format with `ls -l`.
+
+If you notice though, there is no member for the name of the file.
+This is because directories handle that part of resolution.
+Directories are a list of entries (dentries) that map the file name to its inode.
+As a result there won't be a name stored with the inode as the dentries already handled it.
+The directory entry is defined in dirent.h and its struct looks like this.
+```
+struct dirent {
+    ino_t          d_ino;       /* Inode number */
+    off_t          d_off;       /* Current position in directory stream. Treat as an opaque value */
+    unsigned short d_reclen;    /* Length of this record */
+    unsigned char  d_type;      /* Type of file; not supported by all filesystem types */
+    char           d_name[256]; /* Null-terminated filename */
+};
+```
+
+As you can see it is not the entire dentry table, but what a single entry is.
 
 ### Linux File Permissions
 
@@ -183,7 +244,6 @@ Root is incredibly dangerous to use all willy-nilly, so only use root only when 
 The utmost care should be taken to avoid an attacker creating a root shell allowing them to create wreak havoc on the system.
 Security involving root becomes a lot more important in the next section.
 
-
 #### Owning a File
 
 Now that you can read the permissions, what does it mean to own a file?
@@ -205,6 +265,7 @@ However, this is assuming the user is able to get to their file.
 //mention how it's the directory that determiens deleting and renaming
 //example file owned by use in /, but can't move because no w perm
 //Talk about how you can list within your own directory even if the directory inside doesn't have read
+//talk about inodes
 
 The permissions of directories really show the importance of understanding that files live within a file system.
 It is what allows for multiple users to have shared or separate segments of the file system.
@@ -411,3 +472,5 @@ CODES TO TEST
 ### Sources
 
 Secure Programming Cookbook for C and C++ by John Viega and Matt Messier
+[Inode Linux Man Page](https://www.man7.org/linux/man-pages/man7/inode.7.html)
+[Stat (2) Linux Man Page](https://www.man7.org/linux/man-pages/man2/stat.2.html)
