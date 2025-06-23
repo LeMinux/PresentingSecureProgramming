@@ -271,7 +271,7 @@ The permissions of directories really show the importance of understanding that 
 It is what allows for multiple users to have shared or separate segments of the file system.
 Now because directories are a special kind of file the permissions behave slightly differently.
 For normal files, the permissions say what they do.
-If read is given, the file can be opened in vim (or some other text editor).
+If read is given, the file can be opened.
 If write is given, the user can modify the file.
 They don't necessarily need to know what is in the file they can overwrite it with `echo "my file now" > some_file.txt`.
 If execute is given, the user can try to use the shell to execute the file.
@@ -283,7 +283,7 @@ ls as well will need r-x instead of r--.
 A directory can still have just read and just write, but commands will not work as intended.
 //SHOW CODE FOR THIS IT'S PRETTY NEAT
 You can still use ls on a directory with r--, but since -x is what gives the ability to search inside the command half completes the job.
-ls will still show the contents by saying it couldn't access the file at that path, but using the -l flag won't reveal any information.
+ls will still show the contents by saying it couldn't access the file at that path, but using the -l flag won't reveal any file information.
 Tab completion would also still work on a directory with just r--, so it can be used as a poor man's ls.
 The write bit would give you permission to rename, move, and delete files, but it can only be done if permission to execute is given.
 The execute bit is what allows a user to change the working directory into it, and gives access to the files.
@@ -296,13 +296,19 @@ Can only list directory contents.
 
 300 (-wx------)
 Can only create, delete, and rename files
+Can write to known files
 
 100 (--x------)
-Can use/resolve the directory.
+Can cd into the directory.
 ```
-A directory is basically a list of inodes.
-If you think about these permissions on how it would affect a list it makes a bit more sense.
-The executable bit is what reveals these inodes with the other bits determining what can be done with them.
+The 100 case is quite interesting as once you enter a directory the file permissions determine what you can do.
+This would mean you can cd into the directory and still read, write, or execute a file if the file allows it.
+It is not very practical, but I suppose it could be used to create secret files that aren't discoverable.
+Not that it would be useful anyway because the permissions would either make it impractical for yourself or a security risk for other ownerships.
+The reason the execute bit works like this is because a directory is a mapping of names to inodes.
+If you think about these permissions on how it would affect a list it makes a more sense.
+The executable bit is what reveals these inodes with the other bits determining what can be done with the list.
+The read bit says you can read from that list, and the write bit says you can modify the list.
 
 Funky little examples (excluding /home/Jimbo/Documents)
 //Make programs to show this
@@ -322,8 +328,6 @@ Jimbo       (750 Jimbo, Jimbo)
 Documents   (755 Jimbo, Jimbo)
 file.txt    (664 Jimbo, Jimbo)
 ```
-
-
 //probably will move this into the directory chapter
 //something about directory permissions
 //checking up the tree
@@ -445,6 +449,9 @@ There is also a limit to how many file descriptors can be made which can be foun
 
 //talk about fd table
 //how does fork and exec do with fds
+You ever wonder why you still print to the same terminal when you fork two processes?
+Well as you now know, standard out is defined as file descriptor 1 in the fd table.
+When a process forks or execs this table is inherited, so that same fd is still used.
 
 //umask funky
 
