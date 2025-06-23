@@ -1,3 +1,4 @@
 *.out
 *.txt
 link
+./Files/Linux/DirectoryPermissions/TestDir/
