@@ -268,25 +268,21 @@ However, this is assuming the user is able to get to their file.
 //talk about inodes
 
 The permissions of directories really show the importance of understanding that files live within a file system.
-It is what allows for multiple users to have shared or separate segments of the file system.
+Permissions on directories allows for users to organize files into shared or separate segments of the file system.
 Now because directories are a special kind of file the permissions behave slightly differently.
-For normal files, the permissions say what they do.
-If read is given, the file can be opened.
-If write is given, the user can modify the file.
-They don't necessarily need to know what is in the file they can overwrite it with `echo "my file now" > some_file.txt`.
-If execute is given, the user can try to use the shell to execute the file.
-Directories are not normal files, so the permissions are different.
-The execute bit become a lot more important since a lot of action for directories require this bit to be set.
+As mentioned previously, a directory is a list of entries, so the permissions apply to what can be done to that list.
+However, this leaves a peculiar situation on what the execute bit means for a directory.
+You can't exactly execute a directory, yet this bit is crucial to have on a directory.
 According to the man page for chmod, the +x bit for directories permits searching inside.
-For example, to be able to write into a directory -wx is needed instead of just -w-
+For example, to be able to remove or rename files -wx is needed instead of just -w-.
 ls as well will need r-x instead of r--.
 A directory can still have just read and just write, but commands will not work as intended.
-//SHOW CODE FOR THIS IT'S PRETTY NEAT
-You can still use ls on a directory with r--, but since -x is what gives the ability to search inside the command half completes the job.
-ls will still show the contents by saying it couldn't access the file at that path, but using the -l flag won't reveal any file information.
-Tab completion would also still work on a directory with just r--, so it can be used as a poor man's ls.
-The write bit would give you permission to rename, move, and delete files, but it can only be done if permission to execute is given.
-The execute bit is what allows a user to change the working directory into it, and gives access to the files.
+You can still use `ls` on a directory with r--, but since -x is what gives the ability to search inside `ls -l` half completes the job.
+This is because `ls -l` requires execution privileges to go to inodes inside the dentry list.
+As a result, without +x permissions `ls -l` lists files by name, but doesn't show the file info.
+What does work with solely r-- is tab completion since that just needs to look at the entry list.
+Writing permission will always need execution permissions as the entry table can not be modified without executable permissions.
+Some other behaviors are explained in the table below.
 ```
 700 (rwx------)
 Can create, delete, rename, and list files
@@ -301,24 +297,22 @@ Can write to known files
 100 (--x------)
 Can cd into the directory.
 ```
-The 100 case is quite interesting as once you enter a directory the file permissions determine what you can do.
-This would mean you can cd into the directory and still read, write, or execute a file if the file allows it.
-It is not very practical, but I suppose it could be used to create secret files that aren't discoverable.
-Not that it would be useful anyway because the permissions would either make it impractical for yourself or a security risk for other ownerships.
-The reason the execute bit works like this is because a directory is a mapping of names to inodes.
-If you think about these permissions on how it would affect a list it makes a more sense.
-The executable bit is what reveals these inodes with the other bits determining what can be done with the list.
-The read bit says you can read from that list, and the write bit says you can modify the list.
-
-Funky little examples (excluding /home/Jimbo/Documents)
-//Make programs to show this
-//show that ls needs exec
-The entire directory path and their permissions have to allow for a user to access the file they want, and it is used as a way to enforce security.
-The easiest way to think about how permissions work for a directory is the think of them as a step.
-The file path shows all the steps you will need to take with each step needing to grant you access to move forward.
-This example path and permissions in absolute form will be used as an example.
+If you want to have a more comprehensive look at how these permissions affect directories, or if you want to experiment, the script in `./DirectoryPermissions/perms.sh` will be useful for you.
+It will show more nuanced permissions like 100, 300, and 400.
+I will only go over the 100 permission as that truly shows what executable permissions gives a user for a directory.
+A directory with only `--x` only allows a user to `cd` into that directory, but once they are in the directory a file's permissions determines what can be done to itself.
+Once again, the directory permissions only determine what can be done to the directory's list and not the files inside.
+The executable bit on a directory just allows access into dentry list.
+This would mean you can cd into the directory and still read, write, or execute a file if the file allows it because the file has its own permissions.
+With a special case like `100`, I suppose you could create secret files that aren't discoverable because of this fact.
+Not that it would be useful because the permissions would either make it impractical for yourself or a security risk for other ownerships.
+Nonetheless, this is how permissions work for directories.
+//MAKE A PROGRAM FOR THIS AS WELL
+Hopefully now you won't make the mistake of assuming a file can't be deleted if it's owned by a different person because it is the directory itself to determine that action not the file.
+To sum up the permission system for directories, the execute bit allows dereferencing the inodes in the dentry list, read allows reading of the dentry list, and write allows changing the dentry list (with +x).
 
 ##### Permissions Along Directory Path
+
 ```
 /home/Jimbo/SomeDir/file.txt
 
@@ -328,11 +322,20 @@ Jimbo       (750 Jimbo, Jimbo)
 Documents   (755 Jimbo, Jimbo)
 file.txt    (664 Jimbo, Jimbo)
 ```
+//Make programs to show this
+The entire directory path and their permissions have to allow for a user to access the file they want, and it is used as a way to enforce security.
+The easiest way to think about how permissions work for a directory is the think of them as a step.
+The file path shows all the steps you will need to take with each step needing to grant you access to move forward.
+This example path and permissions in absolute form will be used as an example.
+
 //probably will move this into the directory chapter
 //something about directory permissions
 //checking up the tree
 
 ##### Sticky Bit
+
+Since the `-wx` permissions on a directory allows for deleting or renaming files for the owner or group the sticky bit was created.
+The sticky bit is there to only allow the owner of the file or directory to change or delete their files.
 
 #### Links
 
