@@ -96,7 +96,7 @@ Since this can lead to two identical inode numbers, the inode number is a combin
 The device id itself is split into a major and minor ID that defines the device type and class.
 The inode number itself is an incrementing 32-bit unsigned number which creates about 4 billion inodes.
 As the name index node implies, it is effectively an index in a large array.
-This large array defines all the metadata asoociated with a file.
+This large array defines all the metadata associated with a file.
 The inode will point to information like the file permissions, link count, and ownership.
 All information stored can be found in the stat struct in the stat (2) man page shown below.
 ```
@@ -128,9 +128,11 @@ struct stat {
 All of this information is also available in a readable format with `ls -l`.
 
 If you notice though, there is no member for the name of the file.
-This is because directories handle that part of resolution.
-Directories are a list of entries (dentries) that map the file name to its inode.
-As a result there won't be a name stored with the inode as the dentries already handled it.
+As far as the kernel is concerned, it does not need the name because the inode uniquely defines the file.
+Humans on the other hand, need to have the name of the file, so this would mean there is some translation between the name to the inode.
+Directories, are what handle this translation.
+Logically, directories are a list of entries (dentries) that map the file name to its inode.
+It acts like a dictionary where the key is the file name and the value is the inode.
 The directory entry is defined in dirent.h and its struct looks like this.
 ```
 struct dirent {
@@ -142,7 +144,8 @@ struct dirent {
 };
 ```
 
-As you can see it is not the entire dentry table, but what a single entry is.
+As you may notice, this struct is quite bare compared to the stat struct because the inode links to all the metadata.
+This strut also defines a single entry rather than the entire table because readdir() uses a directory stream from opendir().
 
 ### Linux File Permissions
 
@@ -236,13 +239,13 @@ If we use the previous permissions string example here it would look like this.
 Root is an exception to the permission system.
 Since root users need to be able to alter system state, they can do anything on the system.
 This includes changing file ownership, file permissions, zeroing out a storage device, mounting a file system, etc.
-Even with a file that has 000 permissions (even owned by root), the root user can still read, write, and execute the program.
+Even with a file that has 000 permissions not owned by root, the root user can still read, write, and execute the program with sudo.
 It makes sense though since a root user should not be prevented from removing a file and such.
 Users can obtain superuser permissions if they are set to have them as specified in the /etc/sudoers file.
-Although depending on how permissions are set in sudoers a user or group could only have certain root commands available.
+Although depending on how permissions are set in sudoers, a user or group could only have certain root commands available.
 Root is incredibly dangerous to use all willy-nilly, so only use root only when strictly necessary.
-The utmost care should be taken to avoid an attacker creating a root shell allowing them to create wreak havoc on the system.
-Security involving root becomes a lot more important in the next section.
+The utmost care should be taken to avoid an attacker creating a root shell allowing them to wreak havoc on the system.
+Security involving root becomes a lot more important in the later section about (s/g)uid bits.
 
 #### Owning a File
 
@@ -255,40 +258,44 @@ The owning user actually has a bit more control over their files since it is in 
 An owning user can conduct these actions to files they own.
 - Change file permissions (chmod)
 - Change group ownership to groups the owner is in (chgrp)
-- Rename
-- Delete
+- Rename (mv)
+- Delete (rm)
 However, this is assuming the user is able to get to their file.
+When directories come into play it can determine if these above operations can even be conducted.
 
 #### Owning a Directory
-
-//mention how exec for dirs is what allows stuff like ls and stat
-//mention how it's the directory that determiens deleting and renaming
-//example file owned by use in /, but can't move because no w perm
-//Talk about how you can list within your own directory even if the directory inside doesn't have read
-//talk about inodes
 
 The permissions of directories really show the importance of understanding that files live within a file system.
 Permissions on directories allows for users to organize files into shared or separate segments of the file system.
 Now because directories are a special kind of file the permissions behave slightly differently.
+Ownership will still abide by the permissions the same way as files it is just applied differently.
 As mentioned previously, a directory is a list of entries, so the permissions apply to what can be done to that list.
-However, this leaves a peculiar situation on what the execute bit means for a directory.
-You can't exactly execute a directory, yet this bit is crucial to have on a directory.
+Read and write is intuitive, but what does the execute bit do?
+You may think it acts like the other permissions and determines if executing files in the directory is possible, but that is not the case.
 According to the man page for chmod, the +x bit for directories permits searching inside.
 For example, to be able to remove or rename files -wx is needed instead of just -w-.
-ls as well will need r-x instead of r--.
+ls as well will need r-x instead of r-- to work properly.
 A directory can still have just read and just write, but commands will not work as intended.
 You can still use `ls` on a directory with r--, but since -x is what gives the ability to search inside `ls -l` half completes the job.
 This is because `ls -l` requires execution privileges to go to inodes inside the dentry list.
 As a result, without +x permissions `ls -l` lists files by name, but doesn't show the file info.
 What does work with solely r-- is tab completion since that just needs to look at the entry list.
 Writing permission will always need execution permissions as the entry table can not be modified without executable permissions.
+Notice what the write permission does though.
+It changes the directory table, so that means who ever owns the directory with proper permissions can remove files in that directory regardless of the file owner.
+If you want to see this behavior the script `./DirectoryPermissions/show_dir_write.sh` will show it.
+Note that this script will use `chown` which requires root permissions so expect to type in a password.
 Some other behaviors are explained in the table below.
 ```
+/* permissions for owner */
+/* remember that these can apply to other ownership too */
+
 700 (rwx------)
 Can create, delete, rename, and list files
 
 500 (r-x------)
 Can only list directory contents.
+can be seen on /etc for everyone permissions
 
 300 (-wx------)
 Can only create, delete, and rename files
@@ -300,18 +307,23 @@ Can cd into the directory.
 If you want to have a more comprehensive look at how these permissions affect directories, or if you want to experiment, the script in `./DirectoryPermissions/perms.sh` will be useful for you.
 It will show more nuanced permissions like 100, 300, and 400.
 I will only go over the 100 permission as that truly shows what executable permissions gives a user for a directory.
-A directory with only `--x` only allows a user to `cd` into that directory, but once they are in the directory a file's permissions determines what can be done to itself.
+A directory with only `--x` only allows a user to `cd` into that directory and that's about it.
+However, once the user is in the directory a file's permissions determines what can be done to itself.
 Once again, the directory permissions only determine what can be done to the directory's list and not the files inside.
 The executable bit on a directory just allows access into dentry list.
 This would mean you can cd into the directory and still read, write, or execute a file if the file allows it because the file has its own permissions.
 With a special case like `100`, I suppose you could create secret files that aren't discoverable because of this fact.
 Not that it would be useful because the permissions would either make it impractical for yourself or a security risk for other ownerships.
 Nonetheless, this is how permissions work for directories.
-//MAKE A PROGRAM FOR THIS AS WELL
-Hopefully now you won't make the mistake of assuming a file can't be deleted if it's owned by a different person because it is the directory itself to determine that action not the file.
-To sum up the permission system for directories, the execute bit allows dereferencing the inodes in the dentry list, read allows reading of the dentry list, and write allows changing the dentry list (with +x).
+Hopefully now you won't make the mistake of assuming a file can't be deleted if it's owned by a different person because it is the directory owner that determines it.
+The exception to this rule is the sticky bit which is talked about later.
+To sum up the permission system for directories, the execute bit allows accessibility of the inodes in the dentry list, read allows reading of the dentry list, and write allows changing the dentry list (with +x).
 
 ##### Permissions Along Directory Path
+
+//Look into that weird behavior discovered where
+//if switching users in current directory the relative path can list a directory with everyone permissions
+//but the absolute path to that file denies permission to the file in first place yet relative allows listing
 
 ```
 /home/Jimbo/SomeDir/file.txt
@@ -392,6 +404,7 @@ Using a command like `find / -perm /4000` will scan the entire system finding an
 //talk about fds returnign the smallest number it is not incremental
 //mention redirecting any file descriptor
 //talk about handling links
+//talk about reading a directory as finding the max name length is not consistent
 
 Okay so now we understand what a Linux file is and permissions, so what does this mean for the programmer?
 All of this talk to mention 
@@ -484,3 +497,4 @@ CODES TO TEST
 Secure Programming Cookbook for C and C++ by John Viega and Matt Messier
 [Inode Linux Man Page](https://www.man7.org/linux/man-pages/man7/inode.7.html)
 [Stat (2) Linux Man Page](https://www.man7.org/linux/man-pages/man2/stat.2.html)
+[Readdir Linux Man Page](https://www.man7.org/linux/man-pages/man3/readdir.3.html)
