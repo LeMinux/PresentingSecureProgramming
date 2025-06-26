@@ -164,6 +164,7 @@ The table below shows what each segment means.
 | File Type | Permission String | Number of Hard Links | Owning User | Owning Group | File Size | Last Modification Date | Filename |
 | :--------:| :---------------: | :------------------: |:---------: | :----------: | :-------: | :--------------------: | :------: |
 | - | rwxrw-r-- | 1 | Jimbo | Office | 148 | Jun 7 17:30 | bigsleep.c |
+
 Here the permissions are given in symbolic mode with the `rwxrw-r--` string with the owning user as Jimbo and the owning group as Office.
 The permission string is read in sets of 3 in the order of owner, group, and everyone else.
 In this example the owner has all permissions, the group has read and write, and other has read permissions.
@@ -325,6 +326,12 @@ To sum up the permission system for directories, the execute bit allows accessib
 //if switching users in current directory the relative path can list a directory with everyone permissions
 //but the absolute path to that file denies permission to the file in first place yet relative allows listing
 
+//include a script for how recursive delete will get handled
+
+Now that you understand directory permissions this section will expand on why it was important to know about how it works.
+The most notable permission to consider is the write and execute permission since that is what allows changes to the directory path.
+
+
 ```
 /home/Jimbo/SomeDir/file.txt
 
@@ -340,8 +347,6 @@ The easiest way to think about how permissions work for a directory is the think
 The file path shows all the steps you will need to take with each step needing to grant you access to move forward.
 This example path and permissions in absolute form will be used as an example.
 
-//probably will move this into the directory chapter
-//something about directory permissions
 //checking up the tree
 
 ##### Sticky Bit
