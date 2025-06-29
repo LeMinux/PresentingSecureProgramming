@@ -1,5 +1,4 @@
 *.out
 *.txt
-link
-TestDir/
-ShowWritePerms/
+*.link
+DirMoveWithin/
