@@ -10,7 +10,7 @@ nocolor="\033[0m"
 green="\033[0;32m"
 red="\033[0;31m"
 
-dir="TestDir"
+dir="ShowPerms"
 file="file.txt"
 rename="renamed.txt"
 known="known.txt"
@@ -48,10 +48,10 @@ printEchoStatus() {
 runTests() {
     echo  "Testing directory write permission"
     printOffStatus touch "$dir/$file" && mv "$dir/$file" "$dir/$rename" && rm "$dir/$rename"
-    printOffStatus touch -c "$dir/$known"
+    printOffStatus touch -a "$dir/$known"
     echo  "Testing directory read permission"
     printOffStatus ls "$dir"
-    printOffStatus ls -al "$dir"
+    printOffStatus ls --all -l "$dir"
     echo  "Testing directory execute permission"
     printCDStatus
 
@@ -117,8 +117,8 @@ main() {
     echo -e "${cyan}000 (---)$nocolor"
     runTests
 
-    #give all permissions if user wants to do own testing
     chmod 700 "$dir"
+    rm --recursive --force "$dir"
 }
 
 #tab error output to align with my tabbed input

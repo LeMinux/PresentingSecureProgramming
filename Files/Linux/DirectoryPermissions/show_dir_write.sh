@@ -4,7 +4,7 @@
 cyan="\033[0;36m"
 nocolor="\033[0m"
 
-dir="ShowWritePerms"
+dir="ShowWrite"
 file="some_file.txt"
 root_file="some_root_file.txt"
 
@@ -22,10 +22,12 @@ main() {
     rm "$dir/$file"
 
     echo -e "removing file owned by root"
-    rm "$dir/$root_file"
+    rm --force "$dir/$root_file"
 
     echo -e "\n${cyan}Contents after${nocolor}"
     ls -al "$dir"
+
+    rmdir "$dir"
 }
 
 main
