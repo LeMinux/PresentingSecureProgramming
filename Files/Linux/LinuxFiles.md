@@ -1,3 +1,5 @@
+//See if you can avoid root usage by cheeky purposeful thread unsafe stuff to act like root
+
 ## Linux File Security
 
 ### What Are Files
@@ -92,14 +94,16 @@ Metadata as it is called.
 This is where the file system comes into play by storing metadata about a file and defining what a file is.
 On Linux, a file is defined by an inode (index node).
 There exists an inode table that is unique per file system, so this would mean /dev/sda1 or /dev/sdb1 would contain different tables since files systems are per partition.
+At the creation of a file system a maximum number of inodes is determined since the inode table itself is set to a maximum size.
 Since this can lead to two identical inode numbers, the inode number is a combination of the device ID and the inode number.
 The device id itself is split into a major and minor ID that defines the device type and class.
 The inode number itself is an incrementing 32-bit unsigned number which creates about 4 billion inodes.
 As the name index node implies, it is effectively an index in a large array.
-This large array defines all the metadata associated with a file.
-The inode will point to information like the file permissions, link count, and ownership.
+This large array defines all the metadata blocks associated with a file.
+The inode will point to information like the file permissions, link count, data blocks, and ownership.
 All information stored can be found in the stat struct in the stat (2) man page shown below.
 ```
+/* note that the members are not always stored in this order */
 struct stat {
     dev_t     st_dev;         /* ID of device containing file */
     ino_t     st_ino;         /* Inode number */
@@ -125,15 +129,15 @@ struct stat {
     #define st_ctime st_ctim.tv_sec
 };
 ```
-All of this information is also available in a readable format with `ls -l`.
+All of this information is also available in a readable format with `ls -l` or with stat functions in C.
+The struct reveals most information about a file, but it does not show all metadata.
+As you may have noticed there is no name or information about where on disk the inode is stored.
 
-If you notice though, there is no member for the name of the file.
-As far as the kernel is concerned, it does not need the name because the inode uniquely defines the file.
-Humans on the other hand, need to have the name of the file, so this would mean there is some translation between the name to the inode.
-Directories, are what handle this translation.
+For the name portion, that is handled by directories.
 Logically, directories are a list of entries (dentries) that map the file name to its inode.
-It acts like a dictionary where the key is the file name and the value is the inode.
-The directory entry is defined in dirent.h and its struct looks like this.
+The directory itself is also assigned an inode which is what allows for traversal through the file system.
+As far as the kernel is concerned, it does not need the exact name because the inode uniquely defines the file.
+A singular directory entry is defined in dirent.h and its struct looks like this.
 ```
 struct dirent {
     ino_t          d_ino;       /* Inode number */
@@ -144,10 +148,67 @@ struct dirent {
 };
 ```
 
-As you may notice, this struct is quite bare compared to the stat struct because the inode links to all the metadata.
+The struct is quite bare compared to the stat struct since the inode is what links to all the metadata.
 This strut also defines a single entry rather than the entire table because readdir() uses a directory stream from opendir().
 
-### Linux File Permissions
+##### Ext2 & Ext3
+
+For the portion related to data blocks that part is excluded from the stat.h struct as it is not necessary or useful.
+File systems would also have different ways to represent a data block.
+Plus, the programmer is already given tools to manipulate files with read(), write(), and seek().
+In Ext 2 and 3 file systems it uses pointers to point to data on disk.
+There are different kinds of datablocks that are used depending on how large a file gets.
+As files get large, to keep the inode itself smaller the file system uses layers of indirection to compress the inode.
+The levels go from direct -> one level -> two levels -> three levels of indirection.
+This does not compress how much space is used in the file system because it's just moving around where the chunks would be.
+Instead of having 100 contiguous direct blocks pointers creating a very large inode it leaves some direct pointers, but then uses the space of one pointer to contain many other pointers.
+However many pointers is stored in a table depends on the size of pointers and the block size.
+The same applies to how many different kinds of blocks there are.
+Typically, it is 12 direct blocks with 1 block for the different levels of indirection.
+For a 64-bit system (8 byte pointers) and a block size of 512 bytes it would mean a single table could hold 64 pointers.
+This helps keep the inodes a fixed reliable size while having the benefits of maintaining larger files.
+Once file sizes go past direct blocks the data is instead stored in tables containing pointers.
+You can think of each level of indirection as how many tables the system has to go through first.
+So for three levels of indirection the system would have to go through three tables before getting to the pointer to the file block.
+The graphic I made below shows how the different levels would behave.
+
+```
+|----|            |----|             |----|            |----|
+| &f | -> block   |    |             |    |            |    |
+| &p | ---one---> | &f | -> block    |    |            |    |
+| &p | ---two---> | &p | ---two--->  | &f | -> block   |    |
+| &  | --three--> | &p | --three-->  | &p | --three--> | &f | -> block
+|----|            |----|             |----|            |----|
+
+```
+With all this information, an inode for an ext2 or ext3 file system would look more like the table below.
+
+| Inode Structure              |
+| :--------------------------: |
+| Attributes (struct above)    |
+| Direct blocks (12)           |
+| One indirection blocks (1)   |
+| Two Indirection blocks (1)   |
+| Three Indirection blocks (1) |
+
+##### Ext4
+
+Ext4 does not use the same data block pointers as ext3 or 2.
+Ext4 did originally start out as an extension for ext3 meant to be backwards compatible, but fears of stability resulted in a fork of the ext3 code.
+This way existing ext3 users did not have to worry about changes to the existing system.
+Ext4 is backwards compatible with ext3 and ext2, but ext3 is only partially forwards compatible.
+This is because instead of using the older system of data block pointers, ext4 uses extents which is a range of contiguous blocks.
+With the older system consisting of a bunch of pointers you can imagine there would be a lot of fragmentation in the filesystem.
+Fragmentation is not ideal as it slows down file operations.
+With the ext4 system, fragmentation is heavily avoided and tries to keep everything in a block.
+
+//figure out what the inode has
+| Inode Structure              |
+| :--------------------------: |
+| Attributes (struct above)    |
+| Extent                       |
+
+#### Linux File Permissions
 
 Before we get into how to handle files on Linux, we need to understand how permissions work on Linux.
 Since Linux uses a multi-user file system, the OS needs to have some way of enforcing its rules.
@@ -261,7 +322,8 @@ An owning user can conduct these actions to files they own.
 - Change group ownership to groups the owner is in (chgrp)
 - Rename (mv)
 - Delete (rm)
-However, this is assuming the user is able to get to their file.
+Groups ownership also has some extent of control, but they cannot change permissions or ownership.
+However, this is assuming the user or group is able to get to their file.
 When directories come into play it can determine if these above operations can even be conducted.
 
 #### Owning a Directory
@@ -269,7 +331,7 @@ When directories come into play it can determine if these above operations can e
 The permissions of directories really show the importance of understanding that files live within a file system.
 Permissions on directories allows for users to organize files into shared or separate segments of the file system.
 Now because directories are a special kind of file the permissions behave slightly differently.
-Ownership will still abide by the permissions the same way as files it is just applied differently.
+Ownership will still abide by the permissions the same way as files, but what the permissions do is different.
 As mentioned previously, a directory is a list of entries, so the permissions apply to what can be done to that list.
 Read and write is intuitive, but what does the execute bit do?
 You may think it acts like the other permissions and determines if executing files in the directory is possible, but that is not the case.
@@ -306,7 +368,7 @@ Can write to known files
 Can cd into the directory.
 ```
 If you want to have a more comprehensive look at how these permissions affect directories, or if you want to experiment, the script in `./DirectoryPermissions/perms.sh` will be useful for you.
-It will show more nuanced permissions like 100, 300, and 400.
+It will show more nuanced permissions like 100, 200, and 400.
 I will only go over the 100 permission as that truly shows what executable permissions gives a user for a directory.
 A directory with only `--x` only allows a user to `cd` into that directory and that's about it.
 However, once the user is in the directory a file's permissions determines what can be done to itself.
@@ -320,47 +382,116 @@ Hopefully now you won't make the mistake of assuming a file can't be deleted if 
 The exception to this rule is the sticky bit which is talked about later.
 To sum up the permission system for directories, the execute bit allows accessibility of the inodes in the dentry list, read allows reading of the dentry list, and write allows changing the dentry list (with +x).
 
-##### Permissions Along Directory Path
-
-//Look into that weird behavior discovered where
-//if switching users in current directory the relative path can list a directory with everyone permissions
-//but the absolute path to that file denies permission to the file in first place yet relative allows listing
-
-//include a script for how recursive delete will get handled
-
-Now that you understand directory permissions this section will expand on why it was important to know about how it works.
-The most notable permission to consider is the write and execute permission since that is what allows changes to the directory path.
-
-
-```
-/home/Jimbo/SomeDir/file.txt
-
-/           (755 root, root)
-home        (755 root, root)
-Jimbo       (750 Jimbo, Jimbo)
-Documents   (755 Jimbo, Jimbo)
-file.txt    (664 Jimbo, Jimbo)
-```
-//Make programs to show this
-The entire directory path and their permissions have to allow for a user to access the file they want, and it is used as a way to enforce security.
-The easiest way to think about how permissions work for a directory is the think of them as a step.
-The file path shows all the steps you will need to take with each step needing to grant you access to move forward.
-This example path and permissions in absolute form will be used as an example.
-
-//checking up the tree
-
-##### Sticky Bit
+#### Sticky Bit
 
 Since the `-wx` permissions on a directory allows for deleting or renaming files for the owner or group the sticky bit was created.
 The sticky bit is there to only allow the owner of the file or directory to change or delete their files.
 
+#### Access Control Lists (ACL)
+
+### Handling Files
+
+#### Permissions Along Directory Path
+
+Now that you understand directory permissions, this section will expand more about it.
+With all these permissions covered it is pretty annoying having to conduct constant permission checks for the sake of security.
+Luckily directories are here to help with their own permissions, so they can be used as a way to check for security once.
+It may be necessary in certain situations, such as storing sensitive data, to check the entire directory tree with the path given to ensure it is secure.
+This would involve validating each step determining that only the owner (and root users) can modify the directory path.
+It is not as simple as checking solely the parent directory for permissions because write permissions (with exec) grants access to moving and deleting files anywhere along the path.
+The concern here though is not so much deleting the file because `rm -r` would require directories below to agree on permissions.
+Be aware of partial deletion however as `rm -r` will delete everything it can.
+The larger concern is with moving files which can be seen with the script in `./DirectoryPermissions/show_dir_move.sh`.
+This script will require root permissions to run since it is using chown to root:root a directory.
+This script will show even if a subdirectory is owned by root it is the current directory's permissions that determines its own inode table so the root subdir can be renamed.
+This may not be the most damaging vulnerability, but it would be enough to brick a program that depends on a certain file.
+Then again the extent of a vulnerability depends on if it could be exploited, so there could be a situation where a malicious user redirects sensitive files into a directory they control.
+
+#### Absolute vs Relative Paths
+
+//find better intorduction
+Paths will determine how to even get the file you want to handle, but a program must properly handle different paths provided to it.
+For now, we will ignore links as these file objects makes validation more complicated, but they will be mentioned later.
+A program should expect to handle two different kinds of paths.
+These are an absolute path or a relative path.
+On Linux, an absolute path is anything beginning with `/` such as `/etc/resolv.conf`, `/home/Jimbo/Documents/`, or `/usr/../etc`.
+Absolute paths allow for permissions to be verified every step of the way, and only evaluates to one file object.
+Relative paths traverse based off the current working directory.
+It begins with `.` to denote the current directory or `..` to denote going to the parent directory or just a name.
+These paths are some examples of relative paths `../Linux/ProcFDs/`, `../`, `cheese`.
+Generally it will be used for file system traversal or finding files within the current working directory.
+If you notice though, an absolute path can still contain `..` since it would still refer to a single file starting from the root.
+This can mean you can start off from root and end up back at root with a path like `/etc/udev/rules.d/../../../`.
+It is this nuance that makes files paths tough to validate.
+Naive validation or sanitization can lead to storing files in unintended places or opening unintended files.
+A user could supply a path like `/home/../etc/shadow` which would resolve into `/etc/shadow`.
+A program using elevated privileges could then accidentally write over the contents of password hashes as a result.
+Furthermore, a path like `/home/Jimbo/.config/../../../etc/sudoers` could bypass a length check if the program is known the check only the first 19 characters.
+Additionally, equivalence vulnerabilities can be fabricated where a path is effectively equivalent to the desired file.
+Such a case would be the path `/var/log/./syslog` which is equivalent to `/var/log/syslog`.
+A program strictly checking for a string path of `/var/log/syslog` would then allow `/var/log/./syslog`, and an attacker would get what they want.
+
+The relative path does not evaluate to the absolute path.
+You may think the '.' would expand into the absolute path, but it does not.
+The argument will literally be `./path/to/thing` instead of `/home/Jimbo/Documents/path/to/thing` which means the program has no context of permissions before it.
+As an example, if a script was run inside `/home/Jimbo/Documents/SecretStuff` with /Jimbo and /Documents having 700 permission, but SecretStuff has 776 from default mkdir permissions
+if for what ever reason the script allowed switching users either by poor design decisions or some vulnerability a user Timmy outside the owner and group permissions could list the SecretStuff with a relative path.
+This behavior is shown with the script under `./RelativePathAfterSu/relative_path.sh`.
+This one does not use sudo because I thought it would be dangerous to use `sudo su` in a script, so it emulates having no permissions along the path instead.
+Regardless of implementation the point still stands that the relative path can be used to bypass permissions by ignoring all directories before it.
+This is a pretty specific vulnerability to have.
+It would require switching users into the current directory or subprocess cds and having permissions set just the right way, but for a suid or guid program it could happen.
+
 #### Links
 
-Links
-They take special care to handle as naive checking will create a security vulnerability.
+So lets say you have a program where you deal with file paths.
+You know vulnerabilities associated with paths, so you conduct what ever magic to handle that path.
+Just when you thought you handled your files perfectly fine you now have to deal with files pretending to be what they say.
+Links are a similar to shortcuts on Windows, but of course not exactly the same.
+There are two kinds of links to consider on Linux.
+These are soft and hard links.
+Soft links/symbolic links/symlinks just contain a file's name.
+The path can be a relative or absolute path, but they do not point to the actual inode.
+As a result, deleting the file the symbolic link points to can result in a broken link.
+To resolve this issue a hard link can be used to directly point to the inode of a file.
+In effect, it is "creating" two files with different names but identical contents.
+If you recall, inodes are limited to their current file system, so hardlinks can not link to other files across file systems.
+If you wonder why `ls -l` lists how many hard links there are for a file it is because all hard links must be deleted before the file gets deleted.
+In a sense, when you create a directory the `.` and `..` are hard links.
+They point to the inodes of current directory and the parent directory respectively.
+This is why when you use a relative path it does not give the entire absolute path because there is no need to.
+The inode given allows for a direct skip into where it starts from.
+
+A user does not even need permissions for the file to link to it.
+This is because the permissions will be checked once the linked file is opened, so it is typical to see symbolic links with permissions of 777.
+Really the permissions would determine who can use the link.
+Just like other aspects of files, links take special care to handle as naive checking will create a security vulnerability.
+As mentioned, links typically will have 777 permissions, so a program checking for permissions that doesn't resolve a link would instead check the link's permissions rather than the actual file.
+This is a huge consideration to keep in mind because links can be made to any file regardless of the user's permissions to that file.
+The user Jimbo is able to create a link to `/etc/shadow` despite `/etc/shadow` having 640 root:root permissions.
+Additionally, links can mask themselves as a file because they have a name just like a regular file.
+If we continue with `/etc/shadow`, a user could create a link under the name and path of `/etc/shadow` to mess up a program.
+For this reason, some programs may decide to not dereference links.
 Links can also then change mid-way through execution if a Look Before you Leap approach is taken.
 
-#### Access Control Lists (ACL)
+#### Sanitization of Paths
+
+//list some vulnerabilities related to file paths
+// equivalence vulnerability
+// path traversal vulnerability
+// relative path thingy
+
+With all the ways an acceptable path can be made it is pretty difficult to sanitize and validate file paths correctly.
+Failure to properly sanitize paths can lead to a CVE like this one [CVE-2024-2362](https://www.tenable.com/cve/CVE-2024-2362)
+File traversal vulnerabilities can take many forms, so a programmer must convert the input into a standardized form first.
+This is called canonicalization.
+Canonicalization makes it much easier to verify paths as it resolves the path into a simple absolute path.
+This way it avoids equivalence and path vulnerabilities.
+Using solely naive sanitization methods such as removing any occurance of `../` or `./` is not sufficient.
+Checking the beginning portion of a path as well is not sufficient because of absolute paths using traversal like `/var/www/downloads/../../log`.
+All it would really take is the malicious user to create their own script to conduct the reverse of the sanitization and replace `../` with `....//` to get what they want.
+Hidden files must also be considered as those are valid file types, and sanitization that removes any `.` would make those files not usable.
+
 
 #### Suid and Guid bits
 
@@ -399,7 +530,7 @@ They would be represented like so `6755`
 This numerical representation is good to know for the find command with system administration.
 Using a command like `find / -perm /4000` will scan the entire system finding any file that has setuid.
 
-### Linux File Handling
+### File Descriptors
 
 //talk about file descriptor
 //talk about /proc
@@ -410,6 +541,8 @@ Using a command like `find / -perm /4000` will scan the entire system finding an
 //mention redirecting any file descriptor
 //talk about handling links
 //talk about reading a directory as finding the max name length is not consistent
+//talk about difference in fopen and open (buffering vs non-buffering)
+//talk about avoiding race conditions with fds
 
 Okay so now we understand what a Linux file is and permissions, so what does this mean for the programmer?
 All of this talk to mention 
@@ -464,6 +597,8 @@ This would mean that if a file were to be opened as stdout anything printed woul
 There is also a limit to how many file descriptors can be made which can be found at /proc/sys/fs/file-max.
 [Linux Process Injection](https://www.akamai.com/blog/security-research/the-definitive-guide-to-linux-process-injection)
 
+#### PATH Variable
+
 #### Device Files
 
 ### File Descriptors and Process Execution
@@ -500,6 +635,11 @@ CODES TO TEST
 ### Sources
 
 Secure Programming Cookbook for C and C++ by John Viega and Matt Messier
+
+Secure Coding in C and C++ by Robert C. Seacord
+
 [Inode Linux Man Page](https://www.man7.org/linux/man-pages/man7/inode.7.html)
+
 [Stat (2) Linux Man Page](https://www.man7.org/linux/man-pages/man2/stat.2.html)
+
 [Readdir Linux Man Page](https://www.man7.org/linux/man-pages/man3/readdir.3.html)
