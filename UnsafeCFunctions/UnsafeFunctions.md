@@ -34,8 +34,9 @@ Yeah there are a lot
 
 - access()
 
-    Access has a race condition since it checks permissions before opening a file. This can be especially dangerous with symbolic links.
-    You should let the OS check the permissions for you by opening the file.
+    Access has a race condition since it checks permissions before opening a file.
+    This can be especially dangerous with symbolic links.
+    You should let the OS check the permissions for you by opening the file after conducting proper canonicalization, sanitization, and validation.
 
 - stat()
     <race condition>
@@ -52,6 +53,18 @@ Yeah there are a lot
     <Environment variable manipulation and opens to shell manipulation>
 
 - alloca()
+
+- strtok()
+
+- sprintf()
+
+- vsprint()
+
+- gmtime(t)
+
+- ctime(t)
+
+- asctime(t)
 
 ## QUESTIONABLES
 
@@ -104,7 +117,7 @@ be better of using something else.
     fgets reads until it reaches EOF or newline.
     If a newline character is read it will store it in the buffer which can be used to determine if you have read an entire line.
 
-    Error handling for fgets can be a little more tricky as it returns NULL in the event of reaching EOF while reading nothing, or a file error.
+    Error handling for fgets can be a little more tricky as it returns NULL in the event of reaching EOF, reading nothing, or a file error.
     To check for a file error you would use ferror() to check for an error on the file stream.
     
 - execv()
