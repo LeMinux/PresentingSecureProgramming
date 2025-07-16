@@ -25,7 +25,6 @@ These steps include canonicalization/normalization, sanitization, validation, an
 Not every step is strictly necessary, but the order of which it is conducted is necessary.
 Regardless, validation must always be conducted even if the other steps are not used as it is the gatekeeper of input.
 
-
 ### Canonicalization
 
 - Definition: The process of lossless reduction of the input to its equivalent simplest form
@@ -66,7 +65,7 @@ http://example.com/page/
 https://www.example.com/page
 http://www.example.com/page
 ```
-This kind of canonicalization is more so for Search Engine Optimization (SEO) to find your website and better optimize reccomendations.
+This kind of canonicalization is more so for Search Engine Optimization (SEO) to find your website and better optimize recommendations.
 
 When you are dealing with your own website, the same principle of canonicalization still stands, but there are more attacks to consider.
 It is not just file traversal attacks but also XSS attacks, double encoding attacks, and UTF-8.
@@ -74,20 +73,13 @@ In order for sanitization to work effectively, the input needs to be converted t
 Encoding is a large issue as double encoding can be used to obfuscate intent, or one level of encoding can be used to mask a character.
 As an example, some malicious input may be `<script>alert(0)</script>` as an XSS attack.
 On the first level of encoding this input turns into `%3Cscript%3Ealert%280%29%3C%2fscript%3E`.
-Without reducing to a canon form, a validation or sanitization function only checking for `<script>` will miss it because it is actually `%3Cscript%3E`.
+Without reducing to a canon form, a validation or sanitization function only checking for `<script>` will fail because it is actually `%3Cscript%3E`.
 The fix for this would be to decode the input, but attackers know this, so they may encode the input twice or even many times.
-This turns all the % into %25, but it is still equivalent to the original text.
+In this HTML encoding example it turns all the % into %25, but it is still equivalent to the original text.
 Using the previous example this would turn `%3Cscript%3Ealert%280%29%3C%2fscript%3E` into `%253Cscript%253Ealert%25280%2529%253C%252fscript%253E`
 This XSS example would of course apply to path traversal attacks by turning `http://victim/cgi/../../winnt/system32/cmd.exe?/c+dir+c:\` into `http://victim/cgi/%252E%252E%252F%252E%252E%252Fwinnt/system32/cmd.exe?/c+dir+c:\`.
 This specific example for path traversal was found at this OWASP guideline [OWASP Double Encoding](https://owasp.org/www-community/Double_Encoding).
 Hopefully you can see why canonicalization is done first before sanitization and validation.
-
-Now the examples given before are just for HTML encoding.
-When you are dealing with international clients, or simply want to be up to standard UTF-8 is going to cause so much trouble.
-UTF-8, just like with file paths, has many ways to represent the same character.
-This is more so a fault in the design of the standard than an issue of encoding.
-The standard does give a way to detect manipulation luckily.
-
 
 ### Normalization
 
@@ -104,14 +96,9 @@ The standard does give a way to detect manipulation luckily.
 
 - Definition: 
 
-Escaping input should only ever be reserved for cases where the realm of valid and malicious input have so much overlap that a system can expect to take bad tokens in certain cases.
-The best way to avoid the risk of taking bad input is to simply not take it hence why the other methods above are better.
-
-#### Output Sanitization
-
 ### Validation
 
-//talk about validation before callign methods sometimes
+//talk about validation before calling methods sometimes
 
 - Definition: The process of ensuring that input data falls within the expected domain of valid program input
 
@@ -123,7 +110,55 @@ Function arguments must always be validated or asserted.
 When assertions vs validation should be conducted can be a fine line, but remember that assertions are for programmer mistakes.
 Typically, it would mean asserting not NULL.
 
+#### Integers
+
+#### UTF-8
+
+99% of the web currently uses the UTF-8 standard to support international languages.
+UTF-8, just like with file paths, has many ways to represent the same character.
+UTF-8 was designed to encompass as many languages as possible while keeping backwards compatibility with the prevalent ASCII standard.
+This is why the ASCII and first 128 code points of UTF-8 are exactly the same value.
+However, just one byte is not enough to encompass every language, so UTF-8 uses multiple bytes.
+Remember though, that UTF-8 has to be backwards compatible with ASCII, so UTF-8 uses variable length encoding so that ASCII is read as normal.
+UTF-8 uses a max of 6 bytes for a character, so depending on the language a single UTF-8 character can be 1 - 6 bytes long.
+So how does UTF-8 distinguish between the many characters?
+This is done by analyzing how many 1s before encountering a zero is found in the first byte read.
+As mentioned before, ASCII characters will be the same, so their 8th bit is always zero.
+A character that is two bytes long would begin with 110 for the first byte.
+The following bytes would then contain 10 for the first two most significant bits.
+As an example the UTF-8 binary for U+00A7, which is that fancy s thing to indicate a section, is **110**00010 **10**100111 or 0xC2 0xA7 in hex.
+For all the bytes the table below shows potential representations.
+
+| Byte Range              | UTF-8 Binary                                          |
+| :---------------------: | :---------------------------------------------------: |
+| 0x00000000 - 0x0000007F | 0xxxxxxx                                              |
+| 0x00000080 - 0x000007FF | 110xxxxx 10xxxxxx                                     |
+| 0x00000800 - 0x0000FFFF | 1110xxxx 10xxxxxx 10xxxxxx                            |
+| 0x00010000 - 0x001FFFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx                   |
+| 0x00200000 - 0x03FFFFFF | 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx          |
+| 0x04000000 - 0x7FFFFFFF | 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx |
+
+When letters use more bytes it has to split the bits used across the sequence.
+This is seen with the x's.
+For a 2 byte sequence it uses 11 bits which is split with 5 bits in the 1st byte and 6 bits in the second byte.
+The 6 byte sequence only uses a single bit in the first byte and 6 in the rest using 31 bits.
+The intention behind this method was to save space for ASCII text and indicate the length of the sequence, but it accidentally created a why to define the lower level characters multiple ways.
+The only legal way to create a UTF-8 character is with its shortest valid sequence.
+Sequences that are longer than they should be are called overlong sequences.
+If we take a 1 byte ASCII value 'w' which is 01110111 (0x77) and transform it into a 2 byte UTF-8 we get a sequence of (110)00001 (10)110111 (0xC1 0xB7)
+Using longer sequences would just add more zeros, so 4 bytes is (11110)000 (10)000000 (10)000001 (10)110111.
+Just like in the XSS script example in the canonicalization section, this can be used to obfuscate the intended character and lead to XSS or file path attacks.
+
+You may ask why this is not in the canonicalization or sanitization section, and that is because in this case validating is easier to do.
+Validation would require just checking a correct sequence rather than trying to fix a broken one which can introduce more bugs than necessary.
+//show examples
+//show a better example
+For example if we were to try to sanitize an invalid sequence depending on your implementation an attacker could provide an invalid length and remove perfectly good bytes like so `1111110x 00xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx`.
+
+#### Output Sanitization
 
 ## Source
 
 Secure Coding in C and C++ by Robert C. Seacord
+
+Secure Programming Cookbook for C and C++ by John Viega and Matt Messier
