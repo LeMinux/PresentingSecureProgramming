@@ -15,15 +15,25 @@ However, knowing about these vulnerabilities and how systems work helps you be a
 
 The biggest revelation you can as a programmer is understanding that your code lives in a system.
 I mean of course code lives in the system we have context switches, file systems, and networks, but have you thought about what that means?
-The fact a process lives in the system is what leads to vulnerabilities and exploits because if the process was just itself what point would there be to exploit it.
-By definition of a vulnerability it is a weakness that makes the system susceptible to attack or damage for an exploit to use.
-Not every vulnerability necessarily leads to an exploit, but why introduce the risk of exploits in the first place.
-There are a lot of factors that can make a system vulnerable, but there is one key element that makes use of flaws.
-And that is another entity.
-I say entity because it's not just malicious humans that are a concern but also malicious AI.
-Regardless on what does the acting, something has to do the exploit.
-This is why you have to keep the idea of the system in the back of your head.
-Exploits can exist in anything such as hosts of a Call of Duty server becoming vulnerable to RCE (Remote Code Execution) attacks [Low Level Learning CoD Exploit](https://www.youtube.com/watch?v=ERlHfeVmq6g).
+The fact a process lives in the system is what makes vulnerabilities and exploits possible because if the process was just itself what point would there be to exploit it.
+By definition of a vulnerability, it is a weakness that makes the **system** susceptible to attack or damage for an exploit to use.
+The system could be an operating system, a database, a network, or even a CAN bus in a car.
+Any underlying system or communication between systems that an exploit can use to conduct its deed to obtain a desired result.
+Of course, the existence of a system does not make something instantly vulnerable, nor does a vulnerability in code instantly mean an exploit.
+There are a lot of factors that can make a system vulnerable such as misconfigurations, poorly written code within, or humans clicking phishing links.
+Some common patterns are known to create vulnerabilities, but some exploits are so creative nobody would have thought it was possible.
+It is not easy to say how vulnerable a system is because you may have not known they even existed.
+If we look at Stuxnet, it abused many vulnerabilities in multiple systems, but the system was air gapped which prevented remote execution of an exploit.
+In order to conduct the numerous exploits they had to use a human as a vulnerability to plug in an infected USB into the enrichment facility.
+Once plugged in, the malware had to then spoof feedback to not arouse suspicious and destroy the centrifuges.
+This is a basic explanation of Stuxnet, and doesn't do it justice.
+To this day it is probably still the most advanced piece of malware created requiring multiple zero-day vulnerabilities in multiple systems.
+To give another example, hosts of older Call of Duty server are vulnerable to RCE (Remote Code Execution) attacks [Low Level Learning CoD Exploit](https://www.youtube.com/watch?v=ERlHfeVmq6g) because a guy reverse engineered the network stack originating from Quake.
+These two examples bring in another crucial point of some other entity having a desire to conduct exploits.
+I say entity because it's not just malicious humans but also malicious AI or scripts.
+Regardless on what does the acting, something has to find and do the exploit.
+So what really makes something vulnerable is bad code in a system, and someone else with intent to use bad code against you.
+However, if more secure code was implemented from the beginning it would make systems much less vulnerable.
 
 ## Little Note
 
