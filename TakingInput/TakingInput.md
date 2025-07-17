@@ -27,14 +27,14 @@ Regardless, validation must always be conducted even if the other steps are not 
 
 ### Canonicalization
 
-- Definition: The process of lossless reduction of the input to its equivalent simplest form
+- Definition: The process of reducing input to a singular, equivalent, and most standard form.
 
-The goal of this process is to turn ambiguity into a single well-defined equivalent interpretation while keeping the original intention.
+The goal of this process is to eliminate ambiguity of multiple representations of input into a single well-defined, equivalent interpretation while keeping the original intention.
 If two different inputs resolve to the same output, then their canon result should be equal.
-Canonicalization is most often seen with file paths and URLs.
-Since file and URL inputs can have many forms of saying the same thing it is necessary to reduce them to a single accepted and equivalent form.
-For file paths there are many paths you have to concern yourself with absolute and relative paths that can resolve to the same file.
-The code block below shows just a few ways to get to a file like `/etc/passwd` which contains users on a Linux system that everyone can read.
+At first, it may seem like hashing would be a form of canonicalization as it turns input into a unique form, but the original data is lost and is not equivalent.
+Often times canonicalization is done with file paths.
+Since file inputs can have a variety of paths resolving to the same file, it is necessary to reduce them to a single accepted and equivalent form to make future steps easier.
+The code block below shows just a few paths to get to a file like `/etc/passwd` which contains users on a Linux system and has 644 root:root permissions.
 ```
 passwd
 /etc/passwd
@@ -42,18 +42,20 @@ passwd
 //////etc/passwd
 /etc/../etc/passwd
 ./etc/passwd
+/./etc/passwd
 ```
 The canon way to represent this file on Linux would be `/etc/passwd`, so a canon function should resolve all these inputs into `/etc/passwd`.
 However, once symlinks join the party `/etc/passwd` may not be the actual canon path, so the symlink would need to be resolved to find the canon path.
 Although, it is the programmer's decision if they want to accept symlink resolution, or simply return an error for invalid input.
 Window file paths have absolute paths as well that look like `C:\Documents\Reports\Summer2025.pdf`.
-It has the drive letter, the colon, and the backward slash to start at the root of the drive.
+It has the drive letter, the colon, and the pesky backward slash to start at the root of the drive.
 Of course Windows is Windows, so this website from Microsoft explains more about their unique paths [File Path Formats on Windows Systems](https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats).
 
 For URLs thing are even more tricky.
 There are two kinds of canonicalization for a URL.
 There is the one similar to how files are handled where the URL specifies a path, and a URL that Google uses to determine a singular resource.
 The canonicalization for Google more so defines what it thinks is the most canon representation.
+It is more so for Search Engine Optimization (SEO) to find your website and better optimize recommendations.
 It is not so much a consistent standardization, but rather a technique to reduce duplication of a resource for efficiency.
 Website can suggest what they want for their canon URL with `<link rel="canonical" href="https://www.example.com/page">`, but Google ultimately decides what it is.
 In some instances trying to use http when the canon URL uses https will promote to https.
@@ -65,11 +67,10 @@ http://example.com/page/
 https://www.example.com/page
 http://www.example.com/page
 ```
-This kind of canonicalization is more so for Search Engine Optimization (SEO) to find your website and better optimize recommendations.
 
-When you are dealing with your own website, the same principle of canonicalization still stands, but there are more attacks to consider.
-It is not just file traversal attacks but also XSS attacks, double encoding attacks, and UTF-8.
-In order for sanitization to work effectively, the input needs to be converted to the canon form.
+Then there is the part of the path inside the URL itself.
+Then there is the part of dealing with input in a website through the URL or input on the page.
+Since this is dealing with the web, other attacks like XSS attacks, double encoding attacks, and UTF-8 are a concern.
 Encoding is a large issue as double encoding can be used to obfuscate intent, or one level of encoding can be used to mask a character.
 As an example, some malicious input may be `<script>alert(0)</script>` as an XSS attack.
 On the first level of encoding this input turns into `%3Cscript%3Ealert%280%29%3C%2fscript%3E`.
@@ -83,13 +84,61 @@ Hopefully you can see why canonicalization is done first before sanitization and
 
 ### Normalization
 
-- Definition: The process of lossy conversion of input data to the simplest or expected form
+- Definition: The process of reducing input to a more simple or expected form
 
-// find out the exact different in normalization and canonicalization
+Normalization and Canonicalization, at least with user input, is similar but not the same.
+It is pretty easy to get the two confused because they can overlap, are used together, or the context they are used effects the interpretation of what is a normal vs canon form.
+Canonicalization is a subset of normalization since canonicalization resolves to a single unique normal form while normalization reduces to some normal form.
+Normalization still contains steps to clean or transform data, but it is done to bring a more consistent form.
+This can include encoding, removing characters, setting everything to the same case, adding a string suffix, or creating consistent order.
+As an example a normalized path could remove the `.` and `..` special directories, yet keep the path relative.
+In certain contexts, The two terms are interchanged since normalization can create a canon form, but canonicalization is a stricter form of normalization.
+Normalization often times is done in an effort to help canonize.
+As a result, never normalize partial input or combine normalized input with non-normalized input.
+//eeehhh probably not a "as a result" type thing
+//more like a general rule to do, so find a way to word it like that
+
+To help distinguish the difference between canonicalization and normalization, at least with file paths, I'll explain a file path to a symbolic link.
+If we were to look at a file path to a symbolic link, a normalized path could be the absolute path to that symbolic link itself.
+Another normal path could even be a relative path without the special `.` and `..` directories to the same symlink.
+If the symlink were to be a normal file or directory the absolute path would be canon, but because symlinks direct to other locations it is not canon to use just the path to the symlink.
+Additionally, the symlink can redirect with a relative path, so even resolving it could result in a normalized path.
+As a result, the canon version would resolve this link and find the absolute path of what the symlink goes to.
+If chained links were involved the canon path would go all the way to the end, but a normalized path could be any reduced path to the links in between.
+However, this is just in the context of file paths.
+
+In the realm of UTF-8, it is possible to have input that is canon, but is not normalized.
+Since the UTF-8 standard specifies two canon forms of Unicode, normalization has to decide what to use.
+There is the canonical form and the compatibility equivalence form.
+The normalization process for UTF-8 would then have to decide between NFD, NFC, NFKD, and NFKC forms which decides what canon form to use as well as order of marks.
+Much more information can be found on the Unicode normalization form page [Unicode Normalization Forms](https://www.unicode.org/reports/tr15/).
+In some cases there may not exist a widely accepted canon form like with converting letters to lowercase since that's just a word.
+Such a situation could arise from taking input from a menu where a user can input a mixture of cases for a word like `PiCKle`.
 
 ### Sanitization
 
 - Definition: The process of ensuring that data conforms to the requirements of the subsystem to which it is passed.
+
+When input has to transfer between systems the interpretation of data can change.
+As a result input itself has to be altered so that inadvertent actions are not taken.
+This is why SQL injections happen because the database system interprets the data differently than the system of the app.
+Command prompt injections from C code using system() would apply as the app does not interpret the data, but the shell in the OS interprets the data.
+XSS injections may not go through multiple systems, but it uses the web's own interpretation against it.
+An understanding of how data can turn into malicious actions 
+
+
+Basically anytime you have a situation where data can be interpreted differently as a result of crossing a boundary you want to sanitize.
+
+
+#### White Lists
+
+A white lists specifies only allowable criteria.
+
+#### Black Lists
+
+A black lists specifies known restricted criteria.
+The issue black lists have is that you must know what to block, so it is easy to miss what to block.
+
 
 
 #### Escaping
