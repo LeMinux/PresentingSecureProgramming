@@ -27,13 +27,26 @@ Regardless, validation must always be conducted even if the other steps are not 
 
 ### Canonicalization
 
-- Definition: The process of reducing input to a singular, equivalent, and most standard form.
+- Definition: The process of reducing input to a singular, equivalent, and most standard normal form.
 
-The goal of this process is to eliminate ambiguity of multiple representations of input into a single well-defined, equivalent interpretation while keeping the original intention.
-If two different inputs resolve to the same output, then their canon result should be equal.
-At first, it may seem like hashing would be a form of canonicalization as it turns input into a unique form, but the original data is lost and is not equivalent.
-Often times canonicalization is done with file paths.
-Since file inputs can have a variety of paths resolving to the same file, it is necessary to reduce them to a single accepted and equivalent form to make future steps easier.
+The goal of this process is to eliminate ambiguity of multiple representations of input into a single well-defined, equivalent interpretation.
+This way the sanitization and validation functions only have to worry about checking a single form rather than considering many other forms and changing behavior.
+Not only does this simplify the process, but it makes the code more readable and maintainable.
+But what exactly is a canonized form?
+Well the answer to that question really depends on the situation and criteria.
+Sometimes the canon form is a chosen normal form while other times it is well-defined.
+For example, a canon file path has no special directories, no links, and starts at the root.
+An American phone numbers though could have multiple canon forms such as `123-456-7890`, `1234567890`, `(123) 456-7890`, or `1+ 123-456-7890`
+These phone numbers have equivalent meaning, but a canonized form is one and only one of these forms.
+Regardless on what the canon form is, the different variety of inputs should always resolve to its canon form.
+
+One place you will see canonicalization used a lot is with file paths.
+File paths only have one canonical form, but have enough system complexity to understand what it means to be canon.
+File paths can have a variety of paths resolving to the same file.
+This can be from absolute and relative paths or links.
+Hard links are an interesting issue, but a canonized path refers to the path itself rather than the data blocks on disk.
+Technically hard links ruin having only one path to a file, but it is not really a consideration for canonizing as it just so happens that two files are the same.
+Links generally are a concern for race conditions, but that is covered in the Files chapter.
 The code block below shows just a few paths to get to a file like `/etc/passwd` which contains users on a Linux system and has 644 root:root permissions.
 ```
 passwd
@@ -43,19 +56,28 @@ passwd
 /etc/../etc/passwd
 ./etc/passwd
 /./etc/passwd
+/home/User/Documents/link_to_passwd
 ```
-The canon way to represent this file on Linux would be `/etc/passwd`, so a canon function should resolve all these inputs into `/etc/passwd`.
-However, once symlinks join the party `/etc/passwd` may not be the actual canon path, so the symlink would need to be resolved to find the canon path.
-Although, it is the programmer's decision if they want to accept symlink resolution, or simply return an error for invalid input.
-Window file paths have absolute paths as well that look like `C:\Documents\Reports\Summer2025.pdf`.
+The Canon way to represent this file on Linux would be `/etc/passwd`.
+Conveniently enough it is also the absolute path to the file.
+However, keep in mind that the absolute path to a file is not always the canon path because of soft links.
+Additionally, symlinks can redirect with a relative path, so even resolving it could result in a non-canon path.
+As a result, the canon version would resolve symlinks and find the absolute path of what the symlink goes to.
+If chained links were involved the canon path would go all the way down the chain, but a non-canon path could be any path leading to the end file or links in between.
+Although, it is the programmer's decision if they want to accept symlinks.
+Window file paths have canon paths as well that look like `C:\Documents\Reports\Summer2025.pdf`.
 It has the drive letter, the colon, and the pesky backward slash to start at the root of the drive.
-Of course Windows is Windows, so this website from Microsoft explains more about their unique paths [File Path Formats on Windows Systems](https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats).
+A path like `C:Documents\Reports\Summer2025.pdf` without the `\` after `C:` is not canon because it starts from the current directory on the C: drive.
+Windows does have case-insensitive paths, but they do preserve the case.
+The comparison itself done by the .NET file system API is case-insensitive.
+Technically this means there is no canon path if you want to go by the definition, but it is treated as canon for windows.
+Windows is known for being wacky, so this website from Microsoft explains more about their paths [File Path Formats on Windows Systems](https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats).
 
-For URLs thing are even more tricky.
+Another place canonicalization can occur is with URL paths.
 There are two kinds of canonicalization for a URL.
 There is the one similar to how files are handled where the URL specifies a path, and a URL that Google uses to determine a singular resource.
 The canonicalization for Google more so defines what it thinks is the most canon representation.
-It is more so for Search Engine Optimization (SEO) to find your website and better optimize recommendations.
+It is for Search Engine Optimization (SEO) to find your website and better optimize recommendations.
 It is not so much a consistent standardization, but rather a technique to reduce duplication of a resource for efficiency.
 Website can suggest what they want for their canon URL with `<link rel="canonical" href="https://www.example.com/page">`, but Google ultimately decides what it is.
 In some instances trying to use http when the canon URL uses https will promote to https.
@@ -68,9 +90,8 @@ https://www.example.com/page
 http://www.example.com/page
 ```
 
-Then there is the part of the path inside the URL itself.
 Then there is the part of dealing with input in a website through the URL or input on the page.
-Since this is dealing with the web, other attacks like XSS attacks, double encoding attacks, and UTF-8 are a concern.
+Since this is dealing with the web, other attacks like XSS attacks, encoding attacks, and UTF-8 are a concern.
 Encoding is a large issue as double encoding can be used to obfuscate intent, or one level of encoding can be used to mask a character.
 As an example, some malicious input may be `<script>alert(0)</script>` as an XSS attack.
 On the first level of encoding this input turns into `%3Cscript%3Ealert%280%29%3C%2fscript%3E`.
@@ -80,40 +101,50 @@ In this HTML encoding example it turns all the % into %25, but it is still equiv
 Using the previous example this would turn `%3Cscript%3Ealert%280%29%3C%2fscript%3E` into `%253Cscript%253Ealert%25280%2529%253C%252fscript%253E`
 This XSS example would of course apply to path traversal attacks by turning `http://victim/cgi/../../winnt/system32/cmd.exe?/c+dir+c:\` into `http://victim/cgi/%252E%252E%252F%252E%252E%252Fwinnt/system32/cmd.exe?/c+dir+c:\`.
 This specific example for path traversal was found at this OWASP guideline [OWASP Double Encoding](https://owasp.org/www-community/Double_Encoding).
-Hopefully you can see why canonicalization is done first before sanitization and validation.
 
 ### Normalization
 
 - Definition: The process of reducing input to a more simple or expected form
 
-Normalization and Canonicalization, at least with user input, is similar but not the same.
-It is pretty easy to get the two confused because they can overlap, are used together, or the context they are used effects the interpretation of what is a normal vs canon form.
+Normalization and Canonicalization are similar but not the same.
 Canonicalization is a subset of normalization since canonicalization resolves to a single unique normal form while normalization reduces to some normal form.
-Normalization still contains steps to clean or transform data, but it is done to bring a more consistent form.
-This can include encoding, removing characters, setting everything to the same case, adding a string suffix, or creating consistent order.
-As an example a normalized path could remove the `.` and `..` special directories, yet keep the path relative.
-In certain contexts, The two terms are interchanged since normalization can create a canon form, but canonicalization is a stricter form of normalization.
-Normalization often times is done in an effort to help canonize.
-As a result, never normalize partial input or combine normalized input with non-normalized input.
-//eeehhh probably not a "as a result" type thing
-//more like a general rule to do, so find a way to word it like that
+It is pretty easy to get the two confused because their actions overlap or the interpretation of what is a normal vs canon form changes between topics.
+Sometimes they are used interchangeably, but it depends on the intention of the end result of a process.
+Sometimes there may not be a difference in the two processes, so correctness wouldn't matter.
+Normalization still contains steps to clean or transform data, but it is done to bring a more consistent form rather than a unique form.
+This can include
+```
+removing redundant or duplicate data
+adding a suffix string
+adding a prefix string
+creating consistent order
+standardize to a specific form (like DD-MM-YYYY)
+setting all letters to the same case
+setting expected delimiters
+encoding
+```
+These same actions can also be conducted in canonicalization, but once again we have to look at the entire process to determine what is what.
+Since normalization is not intending to reduce to a singular unique form, you have to be careful about how it is done.
+Do not combine normalized input with non-normalized input or normalize partial input as it can create segments that are not normalized.
 
-To help distinguish the difference between canonicalization and normalization, at least with file paths, I'll explain a file path to a symbolic link.
-If we were to look at a file path to a symbolic link, a normalized path could be the absolute path to that symbolic link itself.
-Another normal path could even be a relative path without the special `.` and `..` directories to the same symlink.
-If the symlink were to be a normal file or directory the absolute path would be canon, but because symlinks direct to other locations it is not canon to use just the path to the symlink.
-Additionally, the symlink can redirect with a relative path, so even resolving it could result in a normalized path.
-As a result, the canon version would resolve this link and find the absolute path of what the symlink goes to.
-If chained links were involved the canon path would go all the way to the end, but a normalized path could be any reduced path to the links in between.
-However, this is just in the context of file paths.
-
+This then raises the question then on why normalization is needed if the canon form is the better form?
+Once again I'll point back to that code block of the different actions for normalization.
+If we take the input of `A WaSp` and turn it into `a_wasp`, or `A hive\n` into `A hive` is their altered form the canon form?
+It could be, but are we concerned about the canon form or just want consistency?
+Sometimes you don't care about what the canon form is and just need consistency for raw data.
+Yes, the canon form is the most consistent and best for comparison, but that is assuming there is a worthwhile canon form to have.
+What is the canon form of a sentence or a JSON?
+A canonical form would include having the exact same order of elements in a JSON or correct spelling for a sentence.
+This would be a lot of effort to conduct over something simple like removing redundant characters.
+Some fields like data science benefits from normalization especially with AI depending on consistent data.
+This can involve scaling numerical data in some way to reduce bias or trying to combine data sets in a way that can be meaningfully analyzed.
+For more interactive text based AI, this may involve creating consistent spacing of text since the text has to be tokenized.
+If we want to be very specific we can look at UTF-8.
 In the realm of UTF-8, it is possible to have input that is canon, but is not normalized.
-Since the UTF-8 standard specifies two canon forms of Unicode, normalization has to decide what to use.
-There is the canonical form and the compatibility equivalence form.
-The normalization process for UTF-8 would then have to decide between NFD, NFC, NFKD, and NFKC forms which decides what canon form to use as well as order of marks.
-Much more information can be found on the Unicode normalization form page [Unicode Normalization Forms](https://www.unicode.org/reports/tr15/).
-In some cases there may not exist a widely accepted canon form like with converting letters to lowercase since that's just a word.
-Such a situation could arise from taking input from a menu where a user can input a mixture of cases for a word like `PiCKle`.
+Since the UTF-8 standard specifies two canon forms of Unicode, normalization has to create consistency on what to use.
+These two canon forms are the canonical form and a compatibility equivalence form.
+The normalization process for UTF-8 would then have to decide between NFD, NFC, NFKD, and NFKC forms which decides what canon form to use as well as ordering of marks.
+I won't go into every detail about UTF-8 normalization, so I'll give this link if you want to know more [Unicode Normalization Forms](https://www.unicode.org/reports/tr15/).
 
 ### Sanitization
 
