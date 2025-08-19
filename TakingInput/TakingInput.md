@@ -1,51 +1,63 @@
 ## Taking Input
 
-User input is root of countless vulnerabilities in software.
-Sometimes the vulnerability directly affects the program due to negligence, but it may be a result of crossing boundaries.
-Examples include database requests, command line executables, file systems, libraries, and more.
-This is why you must conduct a series of checks to ensure that input is what is expected before doing anything with it.
-It is not just limited to user input, but really any kind of input expected.
-Function parameters would fall under here as it is the input given to a function.
-If you have looked at NASA's Power of 10 you would recognize this as rule 7 and rule 5.
-The safest approach to taking input is to assume that every input you take will explode your system.
-Of course, this is not always true as invalid input is often accidental, but it puts a mind set in place to catch malicious input.
-Input can mean anything.
-You can not assume that input is valid just because it is not from direct manipulation of a user.
-It can mean the terminal, a user form, JSON data, a binary stream, command line arguments, the network, or environment variables.
-It really depends on the application and how the program takes in data.
-This input must then be validated by a trusted authoritative source.
-For client-server models, it means the conducting server side validation.
-Even if the frontend checks for bad input an attacker could avoid the interface and send directly to an endpoint.
-This isn't to say that client side validation is useless, but more so that server side validation should be the main defense as the server interacts with the system.
-Even things that are to be trusted like persistent storage must be validated in the case that it was tampered with.
-This could be from an internal attack, or simply corrupted data.
-The need for validation is quite evident, but the process is not always easy.
-Depending on the input, extra steps may need to be taken to make validation easier.
-These steps include canonicalization/normalization, sanitization, validation, and output sanitization in that order.
-Not every step is strictly necessary, but the order of which it is conducted is necessary.
-Regardless, validation must always be conducted even if the other steps are not used as it is the gatekeeper of input.
+While the best security approach would be to take absolutely no input at all, it's a bit foolish to have a locked up program like that.
+Input is a necessary evil that traditionally comes from a user, but any kind of input can be vulnerable.
+Input is not always in the form of human typed text.
+The input can very well be some kind of electromagnetic wave like radio or light, or it could even be an image.
+Failure to ensure input isn't malicious can exploit the program directly, or use the program to affect other systems.
+Examples include database requests, the OS, file systems, libraries, AI, and more.
+This is why you must conduct a process to ensure that input is safe before doing anything with it.
+However, what distinguishes between what is safe and unsafe?
+This is where trust boundaries come in.
+A trust boundary is what surrounds a component where internal actions are trusted, but data that comes from outside the boundary is assumed to be untrustworthy.
+Inside the component it contains the best interpretation of context on what the data is used for because the component knows its purpose.
+Outside data is untrusted because once data is sent across other trust boundaries it loses its context.
+All the process knows is that it has received data to interpret how it understands it.
+This is why trusted components will validate the data from other trusted components because it can't assume trustworthiness.
 
-### Canonicalization
+With the concept of a trust boundary, an approach of default skepticism can be taken.
+Not all invalid input is the result of devious deviants trying to hack you of course.
+Invalid input is often accidental, but it puts a mind set in place to expect malicious input.
+As mentioned before, input can be in the form of anything.
+It can mean the terminal, a form, JSON data, a binary stream, command line arguments, the network, or environment variables.
+It really depends on the application and how the program takes in data.
+The need for validation is quite evident, but the process is not always easy.
+Each component knows what to do and how to validate in its own way, but this can mean each component has a different input handling process.
+Depending on the input, extra steps may need to be taken to make validation easier.
+Additionally, there really isn't an agreed upon name or acronym for this process it's simply just understood in secure programming as input handling.
+I suppose a more explicit name could be the secure input handling process, but that doesn't sound as nice.
+To keep things less ambiguous by saying "the process" over and over I will refer to the secure input handling process as the S.A.V.E process.
+Here the letters mean Simplify, Alter, Validate, and Edit, and are a one-word summary of a step in the secure input handling process.
+Hopefully the SAVE process will also save your program from bad input.
+The SAVE process includes the steps of canonicalization/normalization (Simplify), sanitization (Alter), validation (Validate), and output sanitization (Edit).
+Not every step is strictly necessary, but the order these steps are conducted in is necessary.
+You don't want to invalidate validation by normalizing afterward, or output sanitize then normalize.
+The proper order is how it is listed in the SAVE acronym.
+The reasoning for this order is because each step fulfills a specific role in how it handles input.
+Conducting the steps out of order would invalidate any effort done, and more than likely lead to vulnerabilities.
+Now let us get into the actual steps because a one-word summary alone won't tell you the little details.
+
+### Canonicalization (Simplify)
 
 - Definition: The process of reducing input to a singular, equivalent, and most standard normal form.
 
 The goal of this process is to eliminate ambiguity of multiple representations of input into a single well-defined, equivalent interpretation.
 This way the sanitization and validation functions only have to worry about checking a single form rather than considering many other forms.
-Not only does this simplify the process, but it makes the code more readable and maintainable.
 But what exactly is a canonized form?
 Well the answer to that question really depends on the situation and criteria.
-Sometimes the canon form is a chosen normal form while other times it is well-defined.
-For example, a canon file path has no special directories, no links, and starts at the root.
-An American phone numbers though could have multiple canon forms such as `123-456-7890`, `1234567890`, `(123) 456-7890`, or `1+ 123-456-7890`
+Sometimes the canon form can be a chosen normal form while other times it is well-defined to the specific context.
+For example, in order for a file path to be canon it has to comply to POSIX rules.
+American phone numbers though could have multiple canon forms such as `123-456-7890`, `1234567890`, `(123) 456-7890`, or `1+ 123-456-7890`
 These phone numbers have equivalent meaning, but a canonized form is one and only one of these forms.
+An argument can be made that this is a form of normalization, but that's talked about later.
 Regardless on what the canon form is, the different variety of inputs should always resolve to its canon form.
 
 One place you will see canonicalization used a lot is with file paths.
 File paths only have one canonical form, but have enough system complexity to understand what it means to be canon.
 File paths can have a variety of paths resolving to the same file.
-This can be from absolute and relative paths or links.
+This can be from absolute/relative paths or links.
 Hard links are an interesting issue, but a canonized path refers to the path itself rather than the data blocks on disk.
-Technically hard links ruin having only one path to a file, but it is not really a consideration for canonizing as it just so happens that two files are the same.
+Technically hard links ruin having only one path to a file, but it is not really a consideration for canonizing as it just so happens that two files paths are the same data block.
 Links generally are a concern for race conditions, but that is covered in the Files chapter.
 The code block below shows just a few paths to get to a file like `/etc/passwd` which contains users on a Linux system and has 644 root:root permissions.
 ```
@@ -102,17 +114,18 @@ Using the previous example this would turn `%3Cscript%3Ealert%280%29%3C%2fscript
 This XSS example would of course apply to path traversal attacks by turning `http://victim/cgi/../../winnt/system32/cmd.exe?/c+dir+c:\` into `http://victim/cgi/%252E%252E%252F%252E%252E%252Fwinnt/system32/cmd.exe?/c+dir+c:\`.
 This specific example for path traversal was found at this OWASP guideline [OWASP Double Encoding](https://owasp.org/www-community/Double_Encoding).
 
-### Normalization
+### Normalization (Simplify)
 
-- Definition: The process of reducing input to a more simple or expected form
+- Definition: The process of reducing input to a more simple or expected form typically for consistency
 
 Normalization and Canonicalization are similar but not the same.
 Canonicalization is a subset of normalization since canonicalization resolves to a single unique normal form while normalization reduces to some normal form.
-It is pretty easy to get the two confused because their actions overlap or the interpretation of what is a normal vs canon form changes between topics.
-Sometimes they are used interchangeably, but it depends on the intention of the end result of a process.
+It is pretty easy to get the two confused because their actions overlap or the interpretation of what is a normal vs canon changes between topics.
 Sometimes there may not be a difference in the two processes, so correctness wouldn't matter.
 Normalization still contains steps to clean or transform data, but it is done to bring a more consistent form rather than a unique form.
-This can include
+Since normalization is not intending to reduce to a singular unique form, you have to be careful about how it is done.
+Do not combine normalized input with non-normalized input or normalize partial input as it can create segments that are not normalized.
+When you do normalize, this can include
 ```
 removing redundant or duplicate data
 adding a suffix string
@@ -123,23 +136,17 @@ setting all letters to the same case
 setting expected delimiters
 encoding
 ```
-These same actions can also be conducted in canonicalization, but once again we have to look at the entire process to determine what is what.
-Since normalization is not intending to reduce to a singular unique form, you have to be careful about how it is done.
-Do not combine normalized input with non-normalized input or normalize partial input as it can create segments that are not normalized.
-
-This then raises the question then on why normalization is needed if the canon form is the better form?
+These same actions can also be conducted in canonicalization.
+This then raises the question on why normalization is needed if the canon form is the better form?
 Once again I'll point back to that code block of the different actions for normalization.
-If we take the input of `A WaSp` and change it into `a_wasp`, or `A hive\n` into `A hive` is their altered form the canon form?
-
-//Include something here about normalization changing things to a state
-//Probably should talk about how canonicalization could apply to anything, but in terms of thinking it plays more like normalization in this case.
-
-It could be, but are we concerned about the canon form or just want consistency?
+If we take the input of `A WaSp` and change it into `a_wasp`, or `A hive\n` into `A hive` which process was used?
+Looking at `A hive` it is more clear it was normalized by removing the new line at the end, but would `a_wasp` be normal or canon?
+It could be said that `a_wasp` is the canon form by choosing this normal form from all others, but you can also say normalized input is lowercase letters with underscores.
+This is getting too much into semantics though.
 Sometimes you don't care about what the canon form is and just need consistency for raw data.
 Yes, the canon form is the most consistent and best for comparison, but that is assuming there is a worthwhile canon form to have.
-What is the canon form of a sentence or a JSON?
-A canonical form would include having the exact same order of elements in a JSON or correct spelling for a sentence.
-This would be a lot of effort to conduct over something simple like removing redundant characters.
+A canonical form of a JSON would include having the exact same order of elements, which would be necessary for hashing, but isn't always needed.
+This would take a lot of effort over something simple like removing redundant characters.
 Some fields like data science benefits from normalization especially with AI depending on consistent data.
 This can involve scaling numerical data in some way to reduce bias or trying to combine data sets in a way that can be meaningfully analyzed.
 For more interactive text based AI, this may involve creating consistent spacing of text since the text has to be tokenized.
@@ -150,7 +157,7 @@ These two canon forms are the canonical form and a compatibility equivalence for
 The normalization process for UTF-8 would then have to decide between NFD, NFC, NFKD, and NFKC forms which decides what canon form to use as well as ordering of marks.
 I won't go into every detail about UTF-8 normalization, so I'll give this link if you want to know more [Unicode Normalization Forms](https://www.unicode.org/reports/tr15/).
 
-### Sanitization
+### Sanitization (Alter)
 
 - Definition: The process of ensuring that data conforms to the requirements of the subsystem to which it is passed.
 
@@ -185,14 +192,38 @@ A pretty funny way to get around a removal sanitization technique is to simply s
 Input like `<scr<script>ipt> alert(0) </scr</script>ipt>` where the sanitization strictly removes script tags would turn this input into `<script> alert(0) </script>`.
 Of course any poorly implemented step of the validation process can pass malicious data, but sanitization is the main process that attempts to remove malicious intent.
 This is why in some cases validation can replace sanitization to deny invalid data right then and there rather than manipulate it which can be safer.
-The validation function would still need some list to know what to do though, so lets talk about the two list approaches.
+
+#### Output Sanitization (Edit)
+
+Input sanitization works when it is known what can be changed about input, so later on it isn't an issue.
+However, the input may be sanitized for its context, but is still malicious for its highly specific output context.
+As an example, `<script> alert(1)</script>` is perfectly fine for a SQL database, but dangerous if sent to be rendered by HTML.
+You may try to use input sanitization to remove the angled brackets; however, this may not be desirable as it can destroy the original data resulting in a negative user experience or unreliable data.
+The destruction may be acceptable if it is known for sure it'll never be used, but situations that call for dynamic behavior on the same data can't make this guarantee.
+It may not be known what to do with data until it gets near the point of usage because it is only then context given on how it will be interpreted.
+In these situations output sanitization is conducted.
+Both input and output sanitization have the same principle of creating data that is safe to pass through a boundary; it is just where that data is that is different.
+Output sanitization changes the data in a way to make it safer to be displayed or sent out to what ever.
+You'll probably see that output sanitization is the preferred method, especially if it's in the context of web development, but keep in mind that the TAP steps are context specific.
+You may very well may have to conduct input and output sanitization if the situation requires it.
+As an example, a website that allows users to post text would want to include any typeable character for user convenience.
+In this case the programmer would prefer to keep the user's input unaltered because why shouldn't a user be able to type script tags.
+Now the programmer could still conduct input sanitization, to be honest it's just a prepared statement, but it would be for the database not the div on the website.
+Once the data is obtained from the database, while it is still in memory and not set to be interpreted it will be sanitized.
+Characters like `< > ; = ' "` are valid typeable characters, so the sanitization would need to encode/escape these characters to avoid attacks like XSS.
+This is just one possible example.
+Output can go to literally anything, and there are even attacks that can be made off the attributes tags of HTML if that is an output.
+Once the data has left the component and past the trust boundary that is it.
+The next component will interpret the data how it expects, and if output sanitization has failed it can lead to exploits even if all previous steps have been conducted properly.
+//find better conclusion
 
 #### White Lists
 
 A white lists specifies only allowable criteria.
-This is generally the most safe approach because there is a failsafe to deny unexpected bad characters.
-By specifying characters that are known to be safe, it becomes much easier to know what characters are potentially unsafe and handle them accordingly.
-This does create larger lists since alphanumberic characters are acceptable in most cases and everything would need to be specified.
+This is generally the most safe approach because there is a failsafe to deny unexpected characters.
+Since you are only concerned about what you know is valid, there isn't a risk of forgetting to add something that is invalid with a blacklist.
+If a character was thought to be malicious, but is actually benign then it simply gets added to a whitelist.
+This does create larger lists since alphanumeric characters are acceptable in most cases and everything would need to be specified.
 Regex can be used if it's a simple enough expression that would act like a whitelist, but more complicated expressions may reduce how effective the white list regex can be.
 Below is some code on how a white list is used to replace bad characters.
 ```
@@ -230,12 +261,12 @@ int main(void) {
 
 A black lists specifies known restricted criteria.
 The issue black lists are you have to know what to block, so it is incredibly easy to miss what to block.
-If we look at SQL injections some known bad characters are `- ; ' "`, but there are many ways to create a SQL injection as this Github page shows [sql-injection-payload-list](https://github.com/payloadbox/sql-injection-payload-list).
+If we look at SQL injections some known bad characters are `- ; ' "`, but there are many ways to create a SQL injection as this GitHub page shows [sql-injection-payload-list](https://github.com/payloadbox/sql-injection-payload-list).
 Looking through that list, a potential injection could include the `#` or `=` character which we have not added to our black list.
-Since there is no fail-safe to default deny like with the whitelist these characters will simply remain untouched.
+Since there is no fail-safe to default deny like with the whitelist these characters will remain untouched.
 The implementation of a blacklist is almost identical to a whitelist apart from the list and logic to favor detecting invalid state.
 In this C example, the two changes from the whitelist example is the use of strcspn() rather than strspn() and the bad\_chars array.
-With strcspn() it returns how many characters are before the first occurance of a given character in a list while strspn() returns the length of a substring it found with only acceptable characters.
+With strcspn() it returns how many characters are before the first occurrence of a given character in a list while strspn() returns the length of a substring it found with only acceptable characters.
 ```
 #include <stdio.h>
 #include <string.h>
@@ -254,7 +285,7 @@ int main(void) {
      * sanitization process
      * Notice is is strCspn and not strspn
      * strCspn works like strspn, but it returns the number of characters before
-     * the first occurance of a letter in the second argument.
+     * the first occurrence of a letter in the second argument.
      * here we pass the string itself in with p and add length until the end
     */
     const char* end = user_data + strlen(user_data);
@@ -274,6 +305,8 @@ However, you don't always know the exact degree of all valid input.
 The whitelist needs to say what is valid, and just with the alphanumeric list you can see the whitelist is much longer.
 It may not be known what every valid input is, or it is not feasible to create a list of every valid input.
 In this case a blacklist is used because it is a more simple and maintainable approach.
+However, in the realm of sanitization where it wants to remove malicious intent you more than likely won't see blacklists.
+The usage of a blacklist would fall closer to validation to test if something is known to be bad.
 As an example, a firewall might allow any connection to a web server.
 From just an IP address it cannot be determined if it is malicious unless it has already conducted suspicious behavior in the past.
 Once it does something suspicious, it'll be added to a blacklist to be denied in the future.
@@ -291,25 +324,60 @@ Some work via searching for a known hash of a bad pattern or suspicious process 
 There are simply too many processes that can be installed let alone created for a whitelist to work.
 However, because of the major flaw with blacklists it is always an arms race between the opposing parties to break the anti-cheat/antivirus software and the people trying to find cheats and malware.
 Hence, why this software went to the kernel level to try to limit the search to context switches.
-Even though blacklists are the worst approach; they are actually used a lot more than you would think due to how dynamic things can be.
+Even though blacklists are the worst approach, they are actually used a lot more than you would think due to how dynamic things can be.
 
-#### Output Sanitization
-
-### Validation
-
-//talk about validation before calling methods sometimes
+### Validation (Validate)
 
 - Definition: The process of ensuring that input data falls within the expected domain of valid program input
 
-Validation of input means to check if input given falls within the realm of acceptability.
-If input does not match the criteria of what your program deems as acceptable it is immediately dropped and is not processes further.
-Once again, validation is the main decision factor in if input goes any further.
-In certain cases sanitization may not be needed because if the input would require active sanitization then it can be denied.
-Function arguments must always be validated or asserted.
-When assertions vs validation should be conducted can be a fine line, but remember that assertions are for programmer mistakes.
-Typically, it would mean asserting not NULL.
+Validation of input means to check if input or behavior falls within the realm of acceptability.
+This can mean validating a certain size, variable type, only numbers, only letters, a specific format, no integer overflow potential, or checking for NULL.
+If the check does not match the criteria of what the component deems as acceptable it is immediately dropped and is not processes further.
+As mentioned before, this kind of behavior can forgo sanitization by understanding that if input needs to be sanitized it can be denied instead to not risk bugs in sanitization.
+Validation doesn't have to be strictly limited to input validation, although this is most common, validation can be conducted on if a process was successful or on function arguments.
+Much like NASA's power of 10 rule 7.
+Validation is the main decision factor on if a process goes any further into the core of component or even to another component.
+Hence, why it is such an important step because it's the last step before data is actually interpreted by the component.
+The validation itself should also be conducted in a trusted space.
+For client-server models, it means conducting server side validation.
+Even if the frontend checks for bad input, an attacker could avoid that interface entirely and send data directly to the server.
+This isn't to say that client side validation is useless, but more so that server side validation should be the main defense as the server is what interacts with the core system.
+Essentially, this will mean copying the validation that is on the frontend to the backend.
+Even things from trusted sources must be validated in case it was tampered with.
+Trusted sources shouldn't be blindly trusted because what stops an attacker from using the trusted source as a proxy.
 
-#### Integers
+#### Functions
+
+Often times when people are learning to program they aren't told to validate function parameters.
+It makes sense though as everything is assumed to be created by a trusted source you the programmer, and if faulty input was given it's not the function's fault.
+However, as mentioned before blind trust is bad.
+You can think of each function having their own trust boundary where input for the parameters comes from the outside.
+Just like with any other trust boundary outside input should go through the SAVE process.
+Although, sometimes naive functions won't have a trust boundary and will simply not validate anything given to it.
+For these functions SAVE is conducted before calling it.
+An argument can be made for making naive functions because parameter validation can incur unnecessary performance cost, and the caller should know what is invalid.
+This principle is what many C functions follow, but this results in many checks all over and free rein for vulnerabilities to slip by.
+Validation inside the callee places validation in a single spot and conducts checks much more consistently.
+For this reason, it is recommended that the called function validate its parameters so that function can at least survive/catch some improper usage.
+Likewise, the caller should check the return value if it indicates an error.
+
+When validation is done the big three tests are
+- Is it empty/NULL
+- Is the length between min and max
+- is the content okay
+
+#### Assertions
+
+Assertions aren't a way of traditional input validation.
+They are designed to be removable, so you wouldn't want your core defense getting yoinked out.
+Assertions test the programmer's assumptions, so in a way it is used to validate the programmer.
+A user does not care if some method takes a string, but if an assert catches no string then it's the programmer's fault.
+// blah blah add more
+
+#### Numeric Values
+
+Numeric values require a little extra care when given.
+There is of course the standard check for bounds, but overflows can occur if those aren't checked.
 
 #### UTF-8
 
@@ -356,14 +424,13 @@ For example if we were to try to sanitize an invalid sequence depending on your 
 
 ### Side Note
 
+It goes without saying that every step of this process should be tested.
 When you are conducting these steps **DO NOT ROLL YOUR OWN FUNCTIONS UNLESS NECESSARY**.
-Most cases there will be a library to aid in the validation process.
-For file paths, the language should supply a way to canonize a path because the process is complicated on your own.
+Most cases there will be a library or function to aid in the SAVE process.
+For file paths, the language should supply a way to canonize a path because that process is complicated on your own.
 C has realpath(), however be careful about PATH\_MAX definitions, and python has a few ways like os.path.realpath() and pathlib.Path().resolve().
-Some languages or libraries may provide methods for sanitization as well.
-Validation and normalization is little more up to you as that is getting down your understanding of data, but there may be some helper methods.
+Validation and normalization is little more up to you as that is getting down your understanding of data.
 Of course make sure that these libraries are trustworthy and maintained, as you would not want to have a vulnerability from your escaping method becoming out of date.
-
 
 ## Source
 
@@ -373,3 +440,4 @@ Secure Programming Cookbook for C and C++ by John Viega and Matt Messier
 
 This similar code for the white/black list [SEI STR02](https://wiki.sei.cmu.edu/confluence/display/c/STR02-C.+Sanitize+data+passed+to+complex+subsystems)
 
+[OWASP XSS Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
