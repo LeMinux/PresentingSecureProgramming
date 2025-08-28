@@ -32,7 +32,7 @@ To give another example, hosts of older Call of Duty server are vulnerable to RC
 These two examples bring in another crucial point of some other entity having a desire to conduct exploits.
 I say entity because it's not just malicious humans but also malicious AI or scripts.
 Regardless on what does the acting, something has to find and do the exploit.
-So what really makes something vulnerable is bad code in a system, and someone else with intent to use bad code against you.
+So what really makes something vulnerable is bad code in a system, and someone else with intent to use that bad code against you.
 However, if more secure code was implemented from the beginning it would make systems much less vulnerable.
 
 ## Little Note
