@@ -6,17 +6,21 @@
 //truncations
 //sign extenstions
 
-//Talk about why code below doesn't work
 ```
-/* x is a signed int in this case */
-if (x < TYPE_MAX_SIZE) {
-    ptr = malloc(x)
-    if (ptr == NULL)
-        abort();
-} else {
-    /* Handle the error condition ... */
+void initialize_array(int size){
+
+    if(size > MAX_ARRAY_SIZE){
+        /* handle error */
+    }
+
+    array = malloc(size);
+
+    /* rest of function */
 }
 ```
+If we look at this code example we can see validation of the function parameter is conducted.
+This check does work if the parameter is larger than the max size.
+However, because of type conversion there is a bug that will allocate a very large space if a negative number is passed.
+A negative number would pass the check, but because malloc takes a size_t it would allocate a very large amount.
+//explain signed and unsigned
 
-In this example the data type of x depends on what behavior will happen. If x is a signed value
-it will result in a very large allocation since malloc accepts a size_t
