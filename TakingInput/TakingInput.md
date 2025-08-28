@@ -1,3 +1,5 @@
+//Go back and revist canonicalization to make a difference in it from normalization
+
 ## Taking Input
 
 While the best security approach would be to take absolutely no input at all, it's a bit foolish to have a locked up program like that.
@@ -159,7 +161,7 @@ I won't go into every detail about UTF-8 normalization, so I'll give this link i
 
 ### Sanitization (Alter)
 
-- Definition: The process of ensuring that data conforms to the requirements of the subsystem to which it is passed.
+- Definition: The process of ensuring that data conforms to the requirements of the subsystem that uses it.
 
 When data has to transfer between systems or trust boundaries the interpretation of data can change.
 This is why SQL injections happen because the database interprets the data differently than the app.
@@ -331,108 +333,92 @@ Even though blacklists are the worst approach, they are actually used a lot more
 - Definition: The process of ensuring that input data falls within the expected domain of valid program input
 
 Validation of input means to check if input or behavior falls within the realm of acceptability.
-This can mean validating a certain size, variable type, only numbers, only letters, a specific format, no integer overflow potential, or checking for NULL.
-If the check does not match the criteria of what the component deems as acceptable it is immediately dropped and is not processes further.
-As mentioned before, this kind of behavior can forgo sanitization by understanding that if input needs to be sanitized it can be denied instead to not risk bugs in sanitization.
-Validation doesn't have to be strictly limited to input validation, although this is most common, validation can be conducted on if a process was successful or on function arguments.
-Much like NASA's power of 10 rule 7.
+This can mean validating a certain size, variable type, only numbers, only letters, a specific format, no integer overflow potential, or checking for empty/NULL.
+If data checked does not match the criteria of what the component deems as acceptable it is immediately dropped and is not processed further.
+As mentioned before, this kind of behavior can forgo input sanitization by understanding that if input needs to be sanitized it can be denied instead to not risk bugs in sanitization.
+A default deny rule can still be in place with a whitelist, so it really depends on if sanitization is actually necessary.
+Sanitization is still a crucial step, but rejecting data rather than trying to filter is much more simple.
 Validation is the main decision factor on if a process goes any further into the core of component or even to another component.
-Hence, why it is such an important step because it's the last step before data is actually interpreted by the component.
-The validation itself should also be conducted in a trusted space.
+Hence, why it is such an important step because it's the last step before data is actually used.
+Since it is such a crucial step, where validation is conducted matters.
+It should be conducted in a trusted place.
+Standard programs will simply conduct the validation internally.
 For client-server models, it means conducting server side validation.
 Even if the frontend checks for bad input, an attacker could avoid that interface entirely and send data directly to the server.
-This isn't to say that client side validation is useless, but more so that server side validation should be the main defense as the server is what interacts with the core system.
+This isn't to say that client side validation is useless, but more so that the server should be the main defense as the server is what interacts with the core systems.
 Essentially, this will mean copying the validation that is on the frontend to the backend.
-Even things from trusted sources must be validated in case it was tampered with.
-Trusted sources shouldn't be blindly trusted because what stops an attacker from using the trusted source as a proxy.
+However, even input from a trusted source must be validated.
+An attacker could compromise what is trusted to send malformed data which blind trust would risk exploitation.
+Chances are though there was a bug on the server side which sent unexpected data.
 
 #### Functions
 
+Now remember that validation does not have to strictly limit itself to just user input.
+Although it is the most common perception of validation, validation can be conducted on if a process indicates success or on function arguments.
+Essentially validating that the program is running as expected much like rule 7 in NASA's power of 10.
 Often times when people are learning to program they aren't told to validate function parameters.
-It makes sense though as everything is assumed to be created by a trusted source you the programmer, and if faulty input was given it's not the function's fault.
+It makes sense though as everything is assumed to be created and tested by a trusted source (you the programmer), and if faulty input was given it's not the function's fault.
 However, as mentioned before blind trust is bad.
 You can think of each function having their own trust boundary where input for the parameters comes from the outside.
-Just like with any other trust boundary outside input should go through the SAVE process.
-Although, sometimes naive functions won't have a trust boundary and will simply not validate anything given to it.
+This can be especially true if it's a helper method called from multiple places.
+Just like with any other trust boundary, outside input should go through the SAVE process.
+Although, sometimes naive functions won't have a trust boundary and will simply accept anything given to it.
 For these functions SAVE is conducted before calling it.
+Remember, not every step in SAVE is needed, so it will probably be just validation for simple checks.
 An argument can be made for making naive functions because parameter validation can incur unnecessary performance cost, and the caller should know what is invalid.
-This principle is what many C functions follow, but this results in many checks all over and free rein for vulnerabilities to slip by.
+This principle is what many naive C functions follow, but this results in many checks all over and free rein for vulnerabilities to slip by.
 Validation inside the callee places validation in a single spot and conducts checks much more consistently.
 For this reason, it is recommended that the called function validate its parameters so that function can at least survive/catch some improper usage.
-Likewise, the caller should check the return value if it indicates an error.
-
-When validation is done the big three tests are
-- Is it empty/NULL
-- Is the length between min and max
-- is the content okay
+Likewise, the caller should check the return value if it indicates an error so that incorrect behavior that is caught isn't ignored.
+C also has a habit of doing this.
 
 #### Assertions
 
-Assertions aren't a way of traditional input validation.
-They are designed to be removable, so you wouldn't want your core defense getting yoinked out.
-Assertions test the programmer's assumptions, so in a way it is used to validate the programmer.
-A user does not care if some method takes a string, but if an assert catches no string then it's the programmer's fault.
-// blah blah add more
+Assertions are not a way to conduct input validation.
+Assertions are meant as a tool to validate the programmer.
+Validation is a test conducted at runtime to find if unknown data is acceptable since input is unpredictable.
+Assertions don't do this because it tests assumptions in internal logic that should always remain true.
+You would assert if a string is NULL, and validate if the string length is less than x.
+The assert for NULL is done since the programmer has control over the variable containing a value.
+If the programmer made a logic error that skipped users inputting into this variable the assert would catch it.
+The reason asserts shouldn't be used as validation is because they are removable.
+You wouldn't want your validation getting yoinked out by a compiling flag.
+The assumption is that if none of the asserts were triggered during testing then the program's internal state is fine.
+However, if we look at the NULL assert example a few sentences ago, you may want to validate for NULL rather than assert.
+It really depends on if the function is public/private and what the parameters are expected to be.
+NASA has a whole rule on their usage of asserts which can be found in the NASA Power of 10 RuleSet chapter.
+In short, assertions help enforce the design by contract principle since that is for the programmer to abide by.
 
 #### Numeric Values
 
 Numeric values require a little extra care when given.
-There is of course the standard check for bounds, but overflows can occur if those aren't checked.
+There is of course the standard check for bounds, but overflows can occur if that isn't checked.
+Overflows are a sneaky little bug that can occur in a variety of ways.
+There is obviously arithmetic, but there is also type promotion and signedness which can hide some bugs.
+With these more specific cases vulnerabilities can squeak by even with conducting validation.
+Validation can't fix this though as it would be an issue of validation given the incorrect type to compare with.
+It's not the fault of validation if the checks assume unsigned numbers, but allows for signed numbers without enforcing unsigned numbers.
+This section won't cover the vulnerability of integers since that's in another chapter, but just know it is something to validate for.
 
 #### UTF-8
 
-99% of the web currently uses the UTF-8 standard to support international languages.
-UTF-8, just like with file paths, has many ways to represent the same character.
-UTF-8 was designed to encompass as many languages as possible while keeping backwards compatibility with the prevalent ASCII standard.
-This is why the ASCII and first 128 code points of UTF-8 are exactly the same value.
-However, just one byte is not enough to encompass every language, so UTF-8 uses multiple bytes.
-Remember though, that UTF-8 has to be backwards compatible with ASCII, so UTF-8 uses variable length encoding so that ASCII is read as normal.
-UTF-8 uses a max of 6 bytes for a character, so depending on the language a single UTF-8 character can be 1 - 6 bytes long.
-So how does UTF-8 distinguish between the many characters?
-This is done by analyzing how many 1s before encountering a zero is found in the first byte read.
-As mentioned before, ASCII characters will be the same, so their 8th bit is always zero.
-A character that is two bytes long would begin with 110 for the first byte.
-The following bytes would then contain 10 for the first two most significant bits.
-As an example the UTF-8 binary for U+00A7, which is that fancy s thing to indicate a section, is **110**00010 **10**100111 or 0xC2 0xA7 in hex.
-For all the bytes the table below shows potential representations.
-
-| Byte Range              | UTF-8 Binary                                          |
-| :---------------------: | :---------------------------------------------------: |
-| 0x00000000 - 0x0000007F | 0xxxxxxx                                              |
-| 0x00000080 - 0x000007FF | 110xxxxx 10xxxxxx                                     |
-| 0x00000800 - 0x0000FFFF | 1110xxxx 10xxxxxx 10xxxxxx                            |
-| 0x00010000 - 0x001FFFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx                   |
-| 0x00200000 - 0x03FFFFFF | 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx          |
-| 0x04000000 - 0x7FFFFFFF | 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx |
-
-When letters use more bytes it has to split the bits used across the sequence.
-This is seen with the x's.
-For a 2 byte sequence it uses 11 bits which is split with 5 bits in the 1st byte and 6 bits in the second byte.
-The 6 byte sequence only uses a single bit in the first byte and 6 in the rest using 31 bits.
-The intention behind this method was to save space for ASCII text and indicate the length of the sequence, but it accidentally created a why to define the lower level characters multiple ways.
-The only legal way to create a UTF-8 character is with its shortest valid sequence.
-Sequences that are longer than they should be are called overlong sequences.
-If we take a 1 byte ASCII value 'w' which is 01110111 (0x77) and transform it into a 2 byte UTF-8 we get a sequence of (110)00001 (10)110111 (0xC1 0xB7)
-Using longer sequences would just add more zeros, so 4 bytes is (11110)000 (10)000000 (10)000001 (10)110111.
-Just like in the XSS script example in the canonicalization section, this can be used to obfuscate the intended character and lead to XSS or file path attacks.
-
-You may ask why this is not in the canonicalization or sanitization section, and that is because in this case validating is easier to do.
-Validation would require just checking a correct sequence rather than trying to fix a broken one which can introduce more bugs than necessary.
-//show examples
-//show a better example
-For example if we were to try to sanitize an invalid sequence depending on your implementation an attacker could provide an invalid length and remove perfectly good bytes like so `1111110x 00xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx`.
+Originally I was going to have a section explaining UTF-8 and how to validate it, and why it would be better to drop invalid UTF-8 than change it.
+However, trying to explain how UTF-8 worked revealed it's a whole other can of binary worms, so I created a separate chapter for it.
+Understanding UTF-8 is essential for the web since every website uses it.
+UTF-8 has some quirks that allows for techniques similar to double encoding trying to hide characters but leaving the same interpretation.
+It is actually mentioned in RFC 3629 overlong sequences can be used as a path traversal attack, so make sure that you are dealing with proper and valid UTF-8 before messing with it.
 
 ### Side Note
 
-It goes without saying that every step of this process should be tested.
 When you are conducting these steps **DO NOT ROLL YOUR OWN FUNCTIONS UNLESS NECESSARY**.
-Most cases there will be a library or function to aid in the SAVE process.
-For file paths, the language should supply a way to canonize a path because that process is complicated on your own.
-C has realpath(), however be careful about PATH\_MAX definitions, and python has a few ways like os.path.realpath() and pathlib.Path().resolve().
-Validation and normalization is little more up to you as that is getting down your understanding of data.
-Of course make sure that these libraries are trustworthy and maintained, as you would not want to have a vulnerability from your escaping method becoming out of date.
+Don't try to reinvent UTF-8 validation or canonization of a file path.
+Most cases there will be a library or function to aid in the SAVE process if it's complicated.
+Of course make sure that these libraries are trustworthy and maintained, as you wouldn't want a vulnerability from your escaping method becoming out of date.
+Remember that not every step of the SAVE process has to be conducted.
+It is just the order the steps that are conducted that is necessary.
+Oftentimes you may only conduct validation, and that's fine.
 
-## Source
+## Sources
 
 Secure Coding in C and C++ by Robert C. Seacord
 
@@ -441,3 +427,5 @@ Secure Programming Cookbook for C and C++ by John Viega and Matt Messier
 This similar code for the white/black list [SEI STR02](https://wiki.sei.cmu.edu/confluence/display/c/STR02-C.+Sanitize+data+passed+to+complex+subsystems)
 
 [OWASP XSS Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
+
+[RFC 3629](https://www.rfc-editor.org/rfc/rfc3629)
