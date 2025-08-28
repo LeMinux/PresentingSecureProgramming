@@ -76,3 +76,5 @@ was something about replacing character with U+
 [Computerphile Tom Scott UTF-8](https://www.youtube.com/watch?v=MijmeoH9LT4)
 
 [Wikipedia UTF-8](https://en.wikipedia.org/wiki/UTF-8)
+
+[RFC 3629](https://www.rfc-editor.org/rfc/rfc3629)
