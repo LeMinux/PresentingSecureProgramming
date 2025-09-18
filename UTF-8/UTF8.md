@@ -1,5 +1,9 @@
 ## UTF-8
 
+The normalization process for UTF-8 would then have to decide between NFD, NFC, NFKD, and NFKC forms which decides what canon form to use as well as ordering of marks.
+I won't go into every detail about UTF-8 normalization, so I'll give this link if you want to know more [Unicode Normalization Forms](https://www.unicode.org/reports/tr15/).
+
+
 ### History
 
 Before the web really took off each country had their own standard on how computers interpreted their alphabet.
