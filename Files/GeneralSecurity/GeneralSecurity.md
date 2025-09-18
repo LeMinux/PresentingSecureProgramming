@@ -58,44 +58,12 @@ The relative path does not evaluate to the absolute path.
 You may think the '.' would expand into the absolute path, but it does not.
 The argument will literally be `./path/to/thing` instead of `/home/Jimbo/Documents/path/to/thing` which means the program has no context of permissions before it.
 As an example, if a script was run inside `/home/Jimbo/Documents/SecretStuff` with /Jimbo and /Documents having 700 permission, but SecretStuff has 776 from default mkdir permissions
-if for what ever reason the script allowed switching users either by poor design decisions or some vulnerability a user Timmy outside the owner and group permissions could list the SecretStuff with a relative path.
+if for what ever reason a script allowed switching users inside `/home/Jimbo/Documents` either by poor design decisions or some vulnerability a user Timmy outside the owner and group permissions could list the SecretStuff with a relative path.
 This behavior is shown with the script under `./RelativePathAfterSu/relative_path.sh`.
 This one does not use sudo because I thought it would be dangerous to use `sudo su` in a script, so it emulates having no permissions along the path instead.
 Regardless of implementation the point still stands that the relative path can be used to bypass permissions by ignoring all directories before it.
 This is a pretty specific vulnerability to have.
 It would require switching users into the current directory or subprocess cds and having permissions set just the right way, but for a suid or guid program it could happen.
-
-#### Links
-
-So lets say you have a program where you deal with file paths.
-You know vulnerabilities associated with paths, so you conduct what ever magic to handle that path.
-Just when you thought you handled your files perfectly fine you now have to deal with files pretending to be what they say.
-Links are a similar to shortcuts on Windows, but of course not exactly the same.
-There are two kinds of links to consider on Linux.
-These are soft and hard links.
-Soft links/symbolic links/symlinks just contain a file's name.
-The path can be a relative or absolute path, but they do not point to the actual inode.
-As a result, deleting the file the symbolic link points to can result in a broken link.
-To resolve this issue a hard link can be used to directly point to the inode of a file.
-In effect, it is "creating" two files with different names but identical contents.
-If you recall, inodes are limited to their current file system, so hardlinks can not link to other files across file systems.
-If you wonder why `ls -l` lists how many hard links there are for a file it is because all hard links must be deleted before the file gets deleted.
-In a sense, when you create a directory the `.` and `..` are hard links.
-They point to the inodes of current directory and the parent directory respectively.
-This is why when you use a relative path it does not give the entire absolute path because there is no need to.
-The inode given allows for a direct skip into where it starts from.
-
-A user does not even need permissions for the file to link to it.
-This is because the permissions will be checked once the linked file is opened, so it is typical to see symbolic links with permissions of 777.
-Really the permissions would determine who can use the link.
-Just like other aspects of files, links take special care to handle as naive checking will create a security vulnerability.
-As mentioned, links typically will have 777 permissions, so a program checking for permissions that doesn't resolve a link would instead check the link's permissions rather than the actual file.
-This is a huge consideration to keep in mind because links can be made to any file regardless of the user's permissions to that file.
-The user Jimbo is able to create a link to `/etc/shadow` despite `/etc/shadow` having 640 root:root permissions.
-Additionally, links can mask themselves as a file because they have a name just like a regular file.
-If we continue with `/etc/shadow`, a user could create a link under the name and path of `/etc/shadow` to mess up a program.
-For this reason, some programs may decide to not dereference links.
-Links can also then change mid-way through execution if a Look Before you Leap approach is taken.
 
 #### Sanitization of Paths
 

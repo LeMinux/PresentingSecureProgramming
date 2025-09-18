@@ -114,8 +114,9 @@ Inodes are stored in an array which is created when the file system is made.
 This is where they get their name of index node since they are just an index in an array.
 Each file system has their own inode table, so this would mean two file systems on /dev/sda1 and /dev/sdb1 would contain different tables.
 Since this can lead to two identical inode numbers, the inode number is a combination of the device ID and the inode number.
-As a result, inodes can only ever reference files in their file system.
 The inode number is an incrementing 32-bit unsigned number while the device ID is split into a major and minor ID that defines the device type and class.
+As a result, inodes can only ever reference files in their file system.
+This is important to know for hard links which directly use the inode number.
 Once the inode table has been created, its size can not be changed.
 Even if there is enough space on disk, if the maximum number of inodes is reach no more files can be created.
 The number of inodes in the array is determined by the total size on disk divided by the inode ratio.
@@ -141,8 +142,7 @@ Instead of having 100 contiguous direct blocks pointers creating a very large in
 This way the inode is a well-defined size, but still contains room for dynamic sizing.
 How many pointers and indirection exists depends on the file system.
 Typically, there are 12 direct blocks with 1 pointer each for the different levels of indirection.
-Although
-How many pointers there are per indirection table also depends on the block size.
+Although, how many pointers there are per indirection table also depends on the block size.
 For a 64-bit system (8 byte pointers) and a block size of 512 bytes it would mean a single table could hold 64 pointers.
 This helps keep the inodes a fixed reliable size while having the benefits of maintaining larger files.
 Once file sizes go past direct blocks the data is instead stored in tables containing pointers.
@@ -425,31 +425,80 @@ Using a command like `find / -perm /4000` will scan the entire system finding an
 
 #### Links
 
-There are two kinds of links to consider on Linux.
-These are soft and hard links.
-Soft links/symbolic links/symlinks just contain a file's name.
-The path can be a relative or absolute path, but they do not point to the actual inode.
-As a result, deleting the file the symbolic link points to can result in a broken link.
-To resolve this issue a hard link can be used to directly point to the inode of a file.
-In effect, it is "creating" two files with different names but identical contents.
-If you recall, inodes are limited to their current file system, so hardlinks can not link to other files across file systems.
-If you wonder why `ls -l` lists how many hard links there are for a file it is because all hard links must be deleted before the file gets deleted.
-In a sense, when you create a directory the `.` and `..` are hard links.
-They point to the inodes of current directory and the parent directory respectively.
-This is why when you use a relative path it does not give the entire absolute path because there is no need to.
-The inode given allows for a direct skip into where it starts from.
+//some intro here
 
-A user does not even need permissions for the file to link to it.
-This is because the permissions will be checked once the linked file is opened, so it is typical to see symbolic links with permissions of 777.
-Really the permissions would determine who can use the link.
-Just like other aspects of files, links take special care to handle as naive checking will create a security vulnerability.
-As mentioned, links typically will have 777 permissions, so a program checking for permissions that doesn't resolve a link would instead check the link's permissions rather than the actual file.
-This is a huge consideration to keep in mind because links can be made to any file regardless of the user's permissions to that file.
-The user Jimbo is able to create a link to `/etc/shadow` despite `/etc/shadow` having 640 root:root permissions.
-Additionally, links can mask themselves as a file because they have a name just like a regular file.
-If we continue with `/etc/shadow`, a user could create a link under the name and path of `/etc/shadow` to mess up a program.
-For this reason, some programs may decide to not dereference links.
-Links can also then change mid-way through execution if a Look Before you Leap approach is taken.
+##### Soft links
+
+Soft links are a file with an inode that holds arbitrary text information that can be created by `ln -s <target> <name of link>`.
+The reason I say arbitrary text data is because the target for the symlink does not need to exist.
+A command like `ln -s aehtihaeithaeiht my_soft_link` is perfectly valid and will just create a broken link.
+Typically, the text information holds a path to another file which can be relative or absolute, but it can hold any text data.
+Additionally, a user does not even need the permissions of the target file to create a symbolic link.
+This is because the symlink is its own file with an inode, so a symlink can be created as long as the directory it's created in allows it.
+Permissions are checked once the OS tries to open the file that the link points to, but the link can have its own permissions.
+The permissions on the link itself just determine who can resolve the link, but they typically have 777.
+It is these properties that make soft links very versatile.
+Symlinks can link to directory, files, devices, or basically anything that can be found via a file path.
+A few examples are /etc/resolv.conf linking to a systemd file and /bin and /sbin linking to /usr/bin and /usr/sbin/.
+This may sound kind of like a Windows shortcut, but soft links do not behave in this manner.
+They are not as simple as setting your working directory to its contents.
+When a soft link is resolved it bases the resolution off its parent directory.
+This is what allows for relative paths inside a soft link.
+Additionally, paths are relative to the link, a link in /home/Jimbo/Documents/my_link points to /etc/systemd/system/
+when the user cds into my_link they can cd .. back into Jimbo's documents rather than /etc/systemd.
+The user is in /home/Jimbo/Documents/my_link/ that is secretly /etc/systemd/system/.
+It is basically like creating a new path to traverse.
+However, since symlinks are just a file that has a path they are highly susceptible to breaking.
+Deleting or moving the linked file or the link itself can result in a broken link.
+It is suggested to use an absolute path for links so that they can be moved around.
+They do provide advantages over hard links like
+-   Ability to link across file systems
+-   Can point to directories and other file objects
+
+
+##### Hard links
+
+On the other hand there are hard links.
+The command to create a hard link is `ln <target> <name of link>` which is the default behavior of ln.
+Hard links link to the actual inode structure of a file, but you also have to remember how Linux uses directories to get the inode from a name.
+What a hard link does is insert itself into the directory entry table.
+You are not creating a separate file because an additional inode is not created.
+You are creating two file paths that link to the same inode structure and thus the same data.
+In fact the special `.` and `..` entries in each dentry are hard links.
+The `.` is a hard link to the current directory's inode, and `..` is a hard link to the parent directory's inode.
+Running the `./Links/special_dir.sh` script will show this which I have added some color coding to.
+This is what allows for relative traversal in the file system avoiding the need to constantly pwd to get your absolute path.
+In effect, a hard link is basically indistinguishable from the original file unless you were to look at logs.
+The only way to know if hard links are present would be the hard link counter in the inode structure.
+This counter is important because a file's data block is only deleted if the hard link counter reaches zero.
+This means all hard links must be deleted to delete a file on Linux.
+There isn't much of an elegant solution other than scanning the entire file system for a specific inode.
+The find command with `find / -samefile <file>` or `find / -inum <inode num>` can be used, but the find man page suggests to use `-samefile`.
+However, hidden files can occur if a process has a file open, but the name portion is removed from the directory entry with unlink.
+At this point the file would only close if the last file descriptor closes the file.
+
+However, hardlinks have restrictions.
+-   A hardlink can only link to inodes on the same file system since the inode itself is partly made of the device id.
+-   The target file must also exist otherwise there is no inode to link.
+-   Directories can't be hard linked normally to maintain an acyclic tree.
+
+You can hard link to a soft link since a soft link is its own separate file.
+
+##### Link Security
+
+Symbolic links are an interesting case when it comes to security.
+Any time you have to deal with files you have to ask yourself if symbolic links are a reasonable concern.
+This is because a symbolic link can allow for arbitrary writing, reading, deleting, or permission changes.
+Links are part of a class of vulnerabilities that have been used to take control of a system or harm the system in other ways.
+Mainly, the problem is with symbolic links, but hard links have been used as well.
+Programs that solely check for just the filename will fall victim to TOUCOU (Time of Check vs Time Of Use) vulnerabilities since the link can change where it goes by the time it is used.
+This is why it is preferable to simply try to open the file right then and there since you know you'll need it later anyway.
+If a user normally couldn't open some file then a link to that file doesn't change the fact it can't be opened.
+A privileged process would want to lower permissions to the real user before attempting to open a file.
+The user Jimbo is able to create a link to `/etc/shadow` despite `/etc/shadow` having 640 root:root permissions, but if a setuid program doesn't check Jimbo's permissions he may write to /etc/shadow.
+Mainly the concerns for symlinks occur when a process has elevated privileges, or an insecure directory allows for other files to be manipulated.
+For this reason, some programs may decide to not dereference links, and will fail if they find it.
+//add more 
 
 ### File Descriptors
 
@@ -566,3 +615,7 @@ Secure Coding in C and C++ by Robert C. Seacord
 [Oracle mkfs.ext4 Blog](https://blogs.oracle.com/linux/post/mkfsext4-what-it-actually-creates)
 
 [Linux Kernel Index Nodes](https://www.kernel.org/doc/html/latest/filesystems/ext4/inodes.html)
+
+[Hard vs Soft Links](https://linuxgazette.net/105/pitcher.html)
+
+[Understand Linux Links](https://www.linux.com/topic/desktop/understanding-linux-links/)
