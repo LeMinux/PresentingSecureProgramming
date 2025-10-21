@@ -110,33 +110,29 @@ struct dirent {
 };
 ```
 
-#### Inode Creation
 
-So we understand what a single inode is, but we will obviously need much more than one for a file system.
-This is where the name of the inode reveals itself as it's an index node.
-Effectively the inode is just an index into the inode table.
-How the table is sized depends on factors like the block size, inode size, grouping of inodes, etc.
-A problem does present itself though because this is just an index node.
-How would the file system handle a case where there are two mounted Linux file systems that want to access an inode?
-Since this can lead to two identical inode numbers, the inode number is a combination of the device ID and the inode number.
-This results in each file system having their own inode table, so this would mean two file systems on /dev/sda1 and /dev/sdb1 would contain different tables.
-The inode number itself is just an incrementing 32-bit unsigned number while the device ID is split into a major and minor ID that defines the device type and class.
-As a result, inodes can only ever reference files in their file system, and why st_dev is in the stat struct.
 
-When it comes to creating the inode table there are a few parameters that determine the size.
-The number of inodes in the array is determined by the total size on disk divided by the inode ratio.
-The inode ratio means to create an inode every n bytes, so a ratio of 10,000 would create 1 inode every 10,000 bytes.
-the ratio should not be lower than the block size as it would create more inodes that could ever be used.
-The block size is what defines the smallest unit of work for the file system.
-This means a file with a single character takes up a block size of space, but also when more space is allocated it will be in a block size.
-This becomes more important in the ext sections.
-Once the number of inodes has been determined the size of the inode array is affected by the size of a single inode.
-A larger inode would create the potential for larger files, but it would come at the cost of less overall data that can be stored.
-All these variables for the file system can be found under `/etc/mke2fs.conf`
-These settings can be altered when using the `mkfs.xxx` command, but generally the default behavior should not be changed.
 
-Once the inode table has been created, its size can not be changed.
-Even if there is enough space on disk, if the maximum number of inodes is reach no more files can be created.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### Different File Systems
 
@@ -157,7 +153,10 @@ The ordering shown is not guaranteed, but the superblock and group descriptors a
 Each version of ext will have some variation on the individual structure of these segments such as Ext 4's own definition for inode and superblock structures.
 The more specific differences will be mentioned in their own sections later.
 Each of these block groups are sized to contain at least `8 * block size` blocks.
-Typically, the default blocksize is 4096 bytes (4 KiB), so this would mean a block group would contain 32,768 blocks.
+If you do not know what a block size is it defines the smallest unit of work for the file system.
+Typically, the default blocksize is 4096 bytes (4 KiB), so this means units of work are done in 4 KiB.
+This means a file with a single character takes up 4 KiB of disk space, but also when more space is allocated it will be in a block size.
+Continuing on with the equation, this would mean a block group would contain 32,768 blocks.
 The size of each block group would then be the `number of blocks per group * block size`.
 With the default settings for the block count the size of a block group would be 128 mebibytes.
 Then you can get how many block groups will be in the system by taking the `file system size / size of each block group`.
@@ -278,6 +277,9 @@ This means the maximum number of files you can create is your inode count.
 For normal users you will probably run out of space before that happens, but knowing this fact can lead to a unique DOS attacks if a server doesn't close their files.
 The number of inodes created is defined by the `filesystem size divided by the inode ratio`.
 The inode ratio says to create an inode for every number of bytes, so if the ratio was 33,333 it would create an inode for every 33,333 bytes.
+The ratio should not be lower than the block size as it would create more inodes that could ever be used.
+
+
 The default inode_ratio is 16,385 bytes which creates 65,536 inodes for every Gibibyte which is just above the max value of an unsigned short.
 Each group then has its own inode table which is sized to have the `total inode count / how many block groups` there are.
 If we have a max inode count of 65,656 with 8 block groups and a file system of 1 gibibyte then there will be 8,192 inodes per group.
@@ -302,6 +304,14 @@ As a result there can't exist an inode of zero otherwise it would turn into -1.
 | # of inodes in each group * inode size      | Inode table size          |
 | (inode_number - 1) / # inodes per group     | Block group of an inode   |
 | (inode_number - 1) % # of inodes_per_group  | Offset into inode table   |
+
+A problem does present itself though.
+How would the file system handle a case where there are two mounted Linux file systems that want to access an inode?
+An inode is just an index, so what happens if they want to access the same inode number?
+Luckily this has been thought about.
+The inode number is a combination of the device ID and the inode number.
+This way the inode remains an incrementing 32-bit unsigned number while the device ID is split into a major and minor ID that defines the device's type and class.
+As a result, inodes can only ever reference files in their file system, and why st_dev is in the stat struct.
 
 #### Data Blocks
 
