@@ -207,9 +207,9 @@ If this flag is not set it will store a backup of the superblock in every group 
 Information about the super block can be revealed using `dumpe2fs <device>`; however, be warned that it will reveal **A TON** of information.
 You probably only want the first 60 lines so using head like so `dumpe2fs <device> | head -n 60` is more preferable.
 The dumpe2fs command will require sudo to run as well.
-The first 30 lines contains information like the OS type, block size, error behavior, inode count, block count, reserved block count, blocks per group, etc.
+The first 60 lines contains information like the OS type, block size, error behavior, inode count, block count, reserved block count, blocks per group, etc.
 It even contains the number of times the system has been mounted before it has been checked.
-After the first 30 lines it shows every block group which will explode your terminal with text hence the suggestion for the head command.
+After the first 60 lines it shows every block group which will explode your terminal with text hence the suggestion for the head command.
 If you want to know where your superblock backups are located `dumpe2fs <device> | grep "superblock"` will reveal that.
 The backups may not be the most up to date because they are only ever updated if the filesystem itself is changed.
 Resizing or tuning the filesystem would cause these backups to change.
