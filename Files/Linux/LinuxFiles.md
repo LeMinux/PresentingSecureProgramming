@@ -251,7 +251,7 @@ This is where the name for the inode comes from since it is just an index to a n
 Since space is limited there can only be so many inodes defined.
 This means the maximum number of files you can create is your inode count.
 For normal users you will probably run out of space before that happens, but knowing this fact can lead to a unique DOS attacks if a server doesn't close their files.
-The number of inodes created is defined by the `filesystem size divided by the inode ratio`.
+The number of inodes created is defined by the `filesystem size / inode ratio`.
 The inode ratio says to create an inode for every number of bytes, so if the ratio was 33,333 it would create an inode for every 33,333 bytes.
 The ratio should not be lower than the block size as it would create more inodes that could ever be used.
 
