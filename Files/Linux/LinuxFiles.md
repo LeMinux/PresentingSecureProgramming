@@ -90,12 +90,12 @@ This is the reason why Linux tends to call them directories instead of folders s
 Now, it's not like the directory holds an entire path, but more a section of that path.
 If we look at the path of `/home/Jimbo/Documents/ACK.png` the traversal looks like this.
 ```
-(   / (2)   )  (     home (20)    )  (  Documents (114)  )
-|-----------|  |------------------|  |-------------------|
-| home-> 20 |->| Downloads -> 100 |  | report.ods -> 528 |
-| usr -> 30 |  | Documents -> 114 |->| book.pdf -> 739   |
-| bin -> 40 |  | Pictures  -> 234 |  | ACK.png -> 300    | -> inode of ACK.png
-|-----------|  |------------------|  |-------------------|
+(    / (2)   )   (  home (20)  )   (     Jimbo (90)   )   (  Documents (114)  )
+|------------|   |-------------|   |------------------|   |-------------------|
+| home -> 20 |-> | Jimbo -> 90 |-> | Downloads -> 100 |   | report.ods -> 528 |
+| usr -> 30  |   | Timbo -> 73 |   | Documents -> 114 |-> | book.pdf -> 739   |
+| bin -> 40  |   | Limbo -> 39 |   | Pictures  -> 234 |   | ACK.png -> 300    |-> inode of ACK.png
+|------------|   |-------------|   |------------------|   |-------------------|
 ```
 Here each entry has the name and some arbitrary inode number it's associated with.
 As you can see, it steps through each dentry to find the inodes along the path.
@@ -109,30 +109,6 @@ struct dirent {
     char           d_name[256]; /* Null-terminated filename */
 };
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ### Different File Systems
 
