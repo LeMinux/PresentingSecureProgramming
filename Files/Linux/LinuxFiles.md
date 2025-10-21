@@ -142,18 +142,23 @@ Even if there is enough space on disk, if the maximum number of inodes is reach 
 
 #### Common EXT Features
 
-The ext file system is a system of many groups with a general layout.
+The extended file system (ext) takes its influence from the BSD Fast Filesystem where it used cylinder groups for hard disk drives.
+Back then, the main mass storage devices were hard disk drives that had physically spinning disks and an actuator arm.
+In order to get the best performance you had to minimize movement of the actuator arm to avoid thrashing as well as avoid fragmentation by having data scattered around.
+The solution for this problem was to group data into cylinder groups to keep reads closer.
+Now with SSDs the issues of figuring out read patterns and thrashing isn't much of an issue, but the system created then persists to today.
+The ext file system is a system of many cylinder groups, which are called block groups, with a general layout.
 A high level look at how each block group is laid out is shown in the table below.
 
-| Padding | Superblock | Group Descriptors | Reserved GDT Blocks | Data Block Bitmap | Inode Bitmap | Inode Table | Data Blocks|
-| :-----: | :--------: | :---------------: |:------------------: | :---------------: |:-----------: | :---------: | :--------: |
+| Padding | Superblock | Group Descriptors | Reserved GDT Blocks | Block Bitmap   | Inode Bitmap | Inode Table | Data Blocks|
+| :-----: | :--------: | :---------------: |:------------------: | :------------: |:-----------: | :---------: | :--------: |
 
-The ordering shown is not guarenteed, but the superblock and group descriptors are the first 2 groups if they are present.
+The ordering shown is not guaranteed, but the superblock and group descriptors are the first 2 groups if they are present.
 Each version of ext will have some variation on the individual structure of these segments such as Ext 4's own definition for inode and superblock structures.
 The more specific differences will be mentioned in their own sections later.
-Each of these block groups are sized to contain at least `8 * blocksize blocks`.
-Typically, the default blocksize is 4096, so this would mean a block group would contain 32,768 blocks.
-The size of each block group would then be the `number of blocks * block size`.
+Each of these block groups are sized to contain at least `8 * block size` blocks.
+Typically, the default blocksize is 4096 bytes (4 KiB), so this would mean a block group would contain 32,768 blocks.
+The size of each block group would then be the `number of blocks per group * block size`.
 With the default settings for the block count the size of a block group would be 128 mebibytes.
 Then you can get how many block groups will be in the system by taking the `file system size / size of each block group`.
 The table below summarizes these formulas.
@@ -164,10 +169,49 @@ The table below summarizes these formulas.
 | # blocks per group * block size             | size of each block group |
 | file system size / size of each block group | # of block groups        |
 
+This kernel docs link will also show other values based on block size [Kernel Docs Blocks](https://docs.kernel.org/filesystems/ext4/blocks.html).
+
 Each block group will have a group descriptor, block bitmap, inode bitmap, and an inode table.
-If there are 12 block groups then there are also 12 of each of these segments as well.
-However, these are not contained all in one block group but rather stored in separate areas.
-The inode bitmap will be stored with other inode bitmaps, and the inode table is stored with other inode tables.
+This means if there are 12 block groups then there are also 12 of each of these segments as well.
+The way these block groups are stored is not directly next to each other.
+These separate groups are more so linked together while remaining in their own segments.
+The inode bitmap will be stored with other inode bitmaps, and the inode table is stored with other inode tables, so a layout looks more like the graphic below.
+The graphic doesn't accurately show how block size plays a part just how stuff is laid out.
+
+```
+-----------------------
+|       padding       |
+|     super block     |
+|     free space      |
+|     free space      |
+|                     |
+|   0th Group desc.   |
+|   1th Group desc.   |
+|   ...............   |
+|   nth Group desc.   |
+|                     |
+|   Reserved blocks   |
+|   Reserved blocks   |
+|   Reserved blocks   |
+|                     |
+|  0th group bit map  |
+|  1th group bit map  |
+|  .................  |
+|  nth group bit map  |
+|                     |
+|  0th inode bit map  |
+|  1th inode bit map  |
+|  .................  |
+|  nth inode bit map  |
+|                     |
+| inode table for 0th |
+| inode table for 1th |
+| .................   |
+| inode table for nth |
+|                     |
+|     Data blocks     |
+-----------------------
+```
 
 #### Padding
 
@@ -186,10 +230,10 @@ The default behavior is to set the sparse_super flag which will store a backup o
 These numbers are 0 and 1 and then numbers in the power of 3, 5, or 7.
 If this flag is not set it will store a backup of the superblock in every group which can be costly for disk space.
 Information about the super block can be revealed using `dumpe2fs <device>`; however, be warned that it will reveal **A TON** of information.
-You probably only want the first 30 lines so using head like so `dumpe2fs <device> | head -n 30` is more preferable.
+You probably only want the first 60 lines so using head like so `dumpe2fs <device> | head -n 60` is more preferable.
 The dumpe2fs command will require sudo to run as well.
-The first 30 lines contains information like the OS type, error behavior, inode count, block count, reserved block count, block size, blocks per group, etc.
-It even contains the number of times the system has been mounted, so you can even know how often you use that partition.
+The first 30 lines contains information like the OS type, block size, error behavior, inode count, block count, reserved block count, blocks per group, etc.
+It even contains the number of times the system has been mounted before it has been checked.
 After the first 30 lines it shows every block group which will explode your terminal with text hence the suggestion for the head command.
 If you want to know where your superblock backups are located `dumpe2fs <device> | grep "superblock"` will reveal that.
 The backups may not be the most up to date because they are only ever updated if the filesystem itself is changed.
@@ -268,53 +312,195 @@ Other features like journaling will also be used in the data blocks as it is jus
 #### Ext2 & Ext3
 
 For the most part, ext2 and ext3 are the same system, but ext3 is ext2 with journaling.
-These two systems are now succeeded by ext4, but these systems are still used to teach how the Linux file system works.
-In the Ext 2 and 3 file system a variety of pointers that point to data blocks on disk are stored in the inode.
-Depending on how large a file gets, different levels of indirection are used to keep the inode itself a consistent size.
+In fact, an ext 2 system can be upgraded to ext3 by tuning it to enable journaling.
+These two systems are succeeded by ext4, but these systems are still used to teach how files are stored.
+The group blocks remains the same, but the inode structure is different.
+In the Ext 2 and 3 file system the inode holds a variety of pointers that point to data blocks on disk.
+Depending on how large a file gets, different levels of indirection get used.
 The levels go from direct -> one level -> two levels -> three levels of indirection with each indirection level pointing to a table of pointers.
-You can think of each level of indirection as how many tables the system has to go through first.
+You can think of each level of indirection as how many tables the system has to go through first before getting to a direct pointer to data.
 So for three levels of indirection the system would have to go through three tables before getting to the pointer to the file block.
 The graphic below shows how the different levels would behave.
 
 ```
-//IS THIS REALLY HOW IT WORKS?
-|----|            |----|             |----|            |----|
-| &f | -> block   |    |             |    |            |    |
-| &p | ---one---> | &f | -> block    |    |            |    |
-| &p | ---two---> | &p | ---two--->  | &f | -> block   |    |
-| &p | --three--> | &p | --three-->  | &p | --three--> | &f | -> block
-|----|            |----|             |----|            |----|
 
+Direct pointers
+
+|---|
+| 1 | ---> data block
+| 2 | ---> data block
+| 3 | ---> data block
+| 4 | ---> data block
+|---|
+
+One level of indirection
+
+              Pointers
+               |---|
+            -> | 1 | ---> data block
+           /   | 2 | ---> data block
+          |    | 3 | ---> data block
+          |    | 4 | ---> data block
+          |    |---|
+          |
+|---|     |    |---|
+| 1 |----/  -> | 1 | ---> data block
+| 2 |------/   | 2 | ---> data block
+| 3 |-----\    | 3 | ---> data block
+|---|     |    | 4 | ---> data block
+          |    |---|
+          |
+           \   |---|
+            -> | 1 | ---> data block
+               | 2 | ---> data block
+               | 3 | ---> data block
+               | 4 | ---> data block
+               |---|
+
+Two levels of indirection
+
+              Pointers    Pointers
+               |---|       |---|
+            -> | 1 |-----> | 1 | ---> data block
+           /   | 2 |---\   | 2 | ---> data block
+          |    | 3 |-\ |   | 3 | ---> data block
+          |    |---| | |   | 4 | ---> data block
+          |          | |   |---|
+          |          | |
+|---|     |          | |   |---|
+| 1 |----/           | --> | 1 | ---> data block
+| 2 |-----\          |     | 2 | ---> data block
+| 3 |--\   |         |     | 3 | ---> data block
+|---|   |  |         |     | 4 | ---> data block
+        |  |         |     |---|
+        |  |         |
+        v  v         |     |---|
+ (to another table)  L---> | 1 | ---> data block
+                           | 2 | ---> data block
+                           | 3 | ---> data block
+                           | 4 | ---> data block
+                           |---|
+
+Three levels of indirection
+
+                                                         Pointers
+                                                          |---|
+              Pointers                                 -> | 1 | ---> data block
+               |---|                                  /   | 2 | ---> data block
+            -> | 1 |-------> (to another table)      /    | 3 | ---> data block
+           /   | 2 |---\                            /     | 4 | ---> data block
+          |    | 3 |-\  |                          /      |---|
+          |    |---| |  |                         /
+          |          |  |                        /        |---|
+          |          |  |           Pointers    /     --> | 1 | ---> data block
+|----|    |          |  |            |---|     /     /    | 2 | ---> data block
+| 1  |---/           |  -----------> | 1 | ---/     /     | 3 | ---> data block
+|----|               v               | 2 | ---------      | 4 | ---> data block
+                (to another table)   | 3 | ----\          |---|
+                                     |---|      \
+                                                 \        |---|
+                                                  ------> | 1 | ---> data block
+                                                          | 2 | ---> data block
+                                                          | 3 | ---> data block
+                                                          | 4 | ---> data block
+                                                          |---|
 ```
 
 This does not compress how much space is used in the file system because it's just moving around where the chunks of pointers would be.
-Instead of having 100 contiguous direct blocks pointers creating a very large inode it leaves some direct pointers, but then uses the space of one pointer to contain many other pointers.
+This behavior helps keep the inode itself a consistent smaller size.
+Instead of having 100 contiguous direct blocks or dynamically resizing an inode it leaves some direct pointers, but then uses the space of one pointer to contain many other pointers.
 This way there is still dynamic sizing of files, but an easy way to create an array of inodes.
 Due to this behavior, the ext3 and ext2 inode is a fixed size of 128 bytes.
-How many pointers and indirection exists depends on the file system.
-Typically, there are 12 direct blocks with 1 pointer each for the different levels of indirection.
-Although, how many pointers there are per indirection table also depends on the block size.
+How many direction pointers there are depends on the file system version, but the Unix file system has 12 direct blocks with 1 pointer each for the different levels of indirection.
+How many pointers there are per indirection table depends on the block size.
 For a 64-bit system (8 byte pointers) and a block size of 512 bytes it would mean a single table could hold 64 pointers.
-With all this information, an inode for an ext2 or ext3 file system can be summarized like the table below.
+There is one issue with this approach though.
+If the inode structure is a consistent size, and only leaves room for the pointers to the tables then where do the tables go?
+The indirection tables have no other choice but to be placed into the data blocks which can cause fragmentation.
+This would create slower performance, and is a main fault of ext3 as performance significantly drops with higher inode counts.
+Additionally, this creates a maximum limit of 2 TiB (with a block size of 4 KiB) since storage is based on the pointers.
+With all this information the ext3 inode structure would look like below.
 
 | Inode Structure              |
 | :--------------------------: |
 | Attributes (stat struct)     |
-| Direct blocks (12)           |
-| One indirection blocks (1)   |
-| Two Indirection blocks (1)   |
-| Three Indirection blocks (1) |
-
+| Direct blocks                |
+| One indirection blocks       |
+| Two Indirection blocks       |
+| Three Indirection blocks     |
 
 #### Ext4
 
 Ext4 is currently the default file system used when you create a new Linux machine.
 Ext4 did originally start out as an extension for ext3 meant to be backwards compatible, but fears of stability resulted in a fork from ext3.
 This way existing ext3 users did not have to worry about changes to the existing system.
+It's a good thing they did because the ext4 system adds a lot more features that ext3 couldn't support.
 Ext4 is backwards compatible with ext3 and ext2 which allows mounting of those systems, but ext3 is only partially forwards compatible with ext4.
-This is because ext4 has a different inode structure and uses extents to minimize fragmentation.
-A summary of the inode structure for ext4 looks like the table below.
+This is because ext4 has a different inode structure, superblock structure, and block group behavior.
+The inode has a significant change in that instead of storing indirection pointers it uses extents.
+With ext2/3 the direction pointers stored every point the file resided in.
+For larger files it could quickly take up the space of the 12 direct pointers leading to less efficient indirection pointers.
+Extents on the other hand don't store every direct block of the file.
+It instead stores the continuous memory of the first and last block.
+This way less metadata is needed to represent a file as representing a range has a constant size, and data is represented contiguously.
+The ext4 extent structure looks like so
+```
+struct ext4_extent {
+    __le32  ee_block;       /* First logical block that the extent covers */
+    __le16  ee_len;         /* Number of blocks covered by this extent */
+    __le16  ee_start_hi;    /* High 16 bits of the starting physical block */
+    __le32  ee_start_lo;    /* Low 32 bits of the starting physical block */
+};
+```
+If we were to use an example of a file spanning 1,000 block sizes, the ext4 structure would simply have ee_len set to 1,000 while ext3 would contain 1,000 pointers.
+This would be assuming an unfragmented file, so extents are arranged in a tree to accommodate multiple extents.
+The extent tree is under the i_block member in the struct ext4_inode, and it is 60 bytes in size.
+The extent tree can hold three different kinds of structures those being the ext4_extent_header, ext4_extent_idx, and ext4_extent.
+Each of these structures are 12 bytes in size which means 5 can be stored in the i_block member.
+In reality, the number is 4 because the first 12 bytes are taken up by the extent_header.
 
+```
+struct ext4_extent_header {
+        __le16  eh_magic;       /* Magic number, 0xF30A */
+        __le16  eh_entries;     /* number of valid entries following header*/
+        __le16  eh_max;         /* Maximum number of entries that could follow the header. */
+        __le16  eh_depth;       /* Depth of this extent node in the extent tree */
+        __le32  eh_generation;  /* generation of the tree (Used by Lustre, but not standard ext4) */
+};
+```
+
+```
+struct ext4_extent_idx {
+        __le32  ei_block;       /* index covers logical blocks from 'block' */ 
+        __le32  ei_leaf_lo;     /* pointer to the physical block of the next *
+                                 * level. leaf or next index could be there */
+        __le16  ei_leaf_hi;     /* high 16 bits of physical block */
+        __u16   ei_unused;
+};
+```
+
+The reason the first 12 bytes are taken up by the header is because it reveals how far the tree goes.
+It tells how deep the tree goes as well as how many valid entries there are.
+The maximumm depth can only by 5.
+The max depth is 5 not because the i_block member is only 60 bytes (remember the first 12 are taken anyway), but because 5 is the smallest practical number.
+The equation used is `4*(((blocksize - 12)/12)^n) >= 2^32` given by the kernel docs.
+If the depth in the header is zero then the i_block structure can hold 4 leaf nodes.
+Once 5 nodes are needed the depth is increased and an index node is used.
+The ext4_extent_idx act as indirection like with ext3 indirection tables.
+They point to other blocks that can contain index nodes or leaf nodes with their own extent header.
+These extent blocks have their own extent_tail which is used as a checksum for that block.
+This checksum uses the inode number, uuid, inode generation number, and the entire extent block excluding the checksum.
+With this behavior the maximum file size that can be 16 - 256 TiB depending on block size.
+The leaf node then shows the extent itself.
+// insert more stuff
+
+The inode record takes up 256 bytes while the inode structure is 160 bytes.
+Ext4 can allocate larger sized inode even ones to the size of block.
+It is not practical to allocate to the size of a block, but each inode can have a different size unlike the consistent size of what ext3 had.
+The extra size is determined by the field i_extra_size in the struct ext4_inode.
+// insert more stuff
+
+A summary of the inode structure for ext4 looks like the table below.
 | Inode Structure              |
 | :--------------------------: |
 | Attributes (stat struct)     |
@@ -323,12 +509,13 @@ A summary of the inode structure for ext4 looks like the table below.
 | Size for extended fields     |
 | sub second precision         |
 
-The inode record takes up 256 bytes while the inode structure is 160 bytes.
-Ext4 can allocate larger sized inode even ones to the size of block.
-It is not practical to allocate to the size of a block, but each inode can have a different size unlike the consistent size of what ext3 had.
-The extra size is determined by the field i_extra_size in the struct ext4_inode.
-With the ext4 system, fragmentation is heavily avoided and tries to keep everything in a block.
-Additionally ext4 has delayed allocation to try and allocate blocks in groups
+Additionally, ext4 has delayed allocation to try to allocate blocks in groups.
+This also has the benefit of not allocating temporary files by the time they get deleted.
+// insert more stuff
+
+#### Hash Trees
+
+
 
 ### The Virtual Filesystem (VFS)
 
@@ -801,4 +988,9 @@ Secure Coding in C and C++ by Robert C. Seacord
 
 [Understand Linux Links](https://www.linux.com/topic/desktop/understanding-linux-links/)
 
-[Understanding ext4 layout](https://blogs.oracle.com/linux/post/understanding-ext4-disk-layout-part-1)
+[Understanding Ext4 Layout](https://blogs.oracle.com/linux/post/understanding-ext4-disk-layout-part-1)
+
+[Understanding Ext4 Layout Part 2](https://blogs.oracle.com/linux/post/understanding-ext4-disk-layout-part-2)
+
+[Ext4 Extents](https://blogs.oracle.com/linux/post/extents-and-extent-allocation-in-ext4)
+
