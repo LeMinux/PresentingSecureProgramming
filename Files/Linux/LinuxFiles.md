@@ -1,15 +1,27 @@
 //Include soemthing about directory caching
-## Linux File System
+//include memfd:
+//say what happens in ram when you open a file
+
+## Linux Files
 
 ### File Abstraction
 
-Before we can talk about all the aspects of a Linux file system we must discuss what a file is defined as on Linux.
-You may have heard the notion that everything is a file on Linux.
+Before we can talk about all the aspects of handling files on Linux we must define what a file is.
+If you have read the file system section then you already know this, but for those who haven't a file on Linux is an inode.
+Inodes hold all the metadata for a file such as permissions, owner, groups, and more.
+Essentially this is just an incremental number that is an index to a specific file for a specific file system.
+You may have heard the notion that everything is a file on Linux, and it is the inode that helps in that.
 Your devices, your memory, your configs, your standard input/output, processes, and mounted file systems are "files".
 This is not to say that each one of these components is a logical block on disk.
-Some components are actually in memory accessible through a pseudo-filesystem such as /proc/ and /sys/.
-What this phrase really means is that everything on Linux can be treated as a file through a common interface.
-Common operations like open(), close(), read(), and write() can be done regardless of what the file is.
+In fact, some file like objects aren't even on the disk and only exist in memory.
+Two notable examples of this is the /proc and /sys directories.
+What this phrase really means is that everything on Linux can be treated as a file through a common interface that is the virtual file system (VFS).
+File operations like opening, closing, reading, and writing can be done regardless of what the file is because the implementation of file operations is abstracted away.
+This way of treating file objects greatly simplifies using the operating system, and it is why piping and redirection just works.
+One issue with this abstraction is that saying something is a file is a broad term.
+As an example, some files can directly manipulate hardware components like the brightness of your screen similar to this command `echo 50 > /sys/class/backlight/<what ever device>` which would set the brightness to 50% normally.
+A user can also zero out their entire drive with dd if they copy and pasted a command not knowing that /dev/sda1 was the representation of their drive.
+Applications and users need to understand what they are dealing because this amount of control can lead to costly consequences.
 Naturally, this means Linux has different types of files which are
 - regular files
 - directory files
@@ -20,42 +32,10 @@ Naturally, this means Linux has different types of files which are
 - pipes
 - door (Solaris)
 
-The actual implementation of file operations is abstracted away, and the program just has to worry about handling data it gets.
-The kernel will handle what drivers are used for the file.
-A little peek behind the abstraction is specified under linux/fs.h. (under /usr/src/\<linux header version\>/include/linux/fs.h)
-What is defined in the file_operations struct determines how a file is handled.
-It looks something like this.
+So even though the humble inode is a simple fella, it is important to understand the information it holds and how it is used.
+This information can be revealed to you via the `stat` command or the `ls` command with the `-l` flag.
+The relevant information given to you is listed below.
 ```
-/* this is not the complete structure */
-struct file_operations {
-	struct module *owner;
-	loff_t (*llseek) (struct file *, loff_t, int);
-	ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
-	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
-    . . .
-	int (*open) (struct inode *, struct file *);
-	int (*flush) (struct file *, fl_owner_t id);
-	int (*release) (struct inode *, struct file *);
-    . . .
-} __randomize_layout;
-```
-Here you can see how the file interface is defined with important notes to open, release (close), read, and write function pointers.
-However, this file_operations struct only defines how to handle certain operations for a file.
-There is no definition for permissions, ownership, data location, path traversal, and other metadata about the file.
-This is where we have to prepare to dive in deep.
-Even though the concept is quite simple, the way everything interacts with it makes for quite the lengthy chapter.
-This concept that is the core of everything in the Linux filesystem is the humble little inode.
-
-### Inodes
-
-#### Inode Contents
-
-An inode is what holds all the metadata for files on Linux.
-This is what holds the file type, permissions, location to data blocks, and other information.
-Usage of `ls -l` or `stat` will reveal some information stored in the inode with `stat` being more comprehensive.
-The stat struct found in stat (2) shows the information it can reveal.
-```
-/* note that the members are not always stored in this order */
 struct stat {
     dev_t     st_dev;         /* ID of device containing file */
     ino_t     st_ino;         /* Inode number */
@@ -65,447 +45,14 @@ struct stat {
     gid_t     st_gid;         /* Group ID of owner */
     dev_t     st_rdev;        /* Device ID (if special file) */
     off_t     st_size;        /* Total size, in bytes */
-    blksize_t st_blksize;     /* Block size for filesystem I/O */
-    blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
+    /* file system block info */
 
-    /* Since Linux 2.6, the kernel supports nanosecond
-       precision for the following timestamp fields.
-       For the details before Linux 2.6, see NOTES. */
-
-    struct timespec st_atim;  /* Time of last access */
-    struct timespec st_mtim;  /* Time of last modification */
-    struct timespec st_ctim;  /* Time of last status change */
-
-    #define st_atime st_atim.tv_sec      /* Backward compatibility */
-    #define st_mtime st_mtim.tv_sec
-    #define st_ctime st_ctim.tv_sec
+    /* time members */
 };
 ```
 
-The important attributes will be referenced later, but you may notice there is nothing for a name.
-This is because directories handle the translation from the name to the inode.
-Directories are files that hold directory entries, also known as dentries or dcaches, that map file path names to their inode.
-Think of it like looking through a phone book that maps the phone number to a person which is also why it can be called a telephone directory.
-This is the reason why Linux tends to call them directories instead of folders since it is a mapping.
-Now, it's not like the directory holds an entire path, but more a section of that path.
-If we look at the path of `/home/Jimbo/Documents/ACK.png` the traversal looks like this.
-```
-(    / (2)   )   (  home (20)  )   (     Jimbo (90)   )   (  Documents (114)  )
-|------------|   |-------------|   |------------------|   |-------------------|
-| home -> 20 |-> | Jimbo -> 90 |-> | Downloads -> 100 |   | report.ods -> 528 |
-| usr -> 30  |   | Timbo -> 73 |   | Documents -> 114 |-> | book.pdf -> 739   |
-| bin -> 40  |   | Limbo -> 39 |   | Pictures  -> 234 |   | ACK.png -> 300    |-> inode of ACK.png
-|------------|   |-------------|   |------------------|   |-------------------|
-```
-Here each entry has the name and some arbitrary inode number it's associated with.
-As you can see, it steps through each dentry to find the inodes along the path.
-A singular entry in the dentry would look something like this as defined in dirent.h
-```
-struct dirent {
-    ino_t          d_ino;       /* Inode number of entry*/
-    off_t          d_off;       /* Current position in directory stream. Treat as an opaque value */
-    unsigned short d_reclen;    /* Length of this record */
-    unsigned char  d_type;      /* Type of file; not supported by all filesystem types */
-    char           d_name[256]; /* Null-terminated filename */
-};
-```
-
-### Different File Systems
-
-#### Common EXT Features
-
-The extended file system (ext) takes its influence from the BSD Fast Filesystem where it used cylinder groups for hard disk drives.
-Back then, the main mass storage devices were hard disk drives that had physically spinning disks and an actuator arm.
-In order to get the best performance you had to minimize movement of the actuator arm to avoid thrashing as well as avoid fragmentation by having data scattered around.
-The solution for this problem was to group data into cylinder groups to keep reads closer.
-Now with SSDs the issues of figuring out read patterns and thrashing isn't much of an issue, but the system created then persists to today.
-The ext file system is a system of many cylinder groups, which are called block groups, with a general layout.
-A high level look at how each block group is laid out is shown in the table below.
-
-| Padding | Superblock | Group Descriptors | Reserved GDT Blocks | Block Bitmap   | Inode Bitmap | Inode Table | Data Blocks|
-| :-----: | :--------: | :---------------: |:------------------: | :------------: |:-----------: | :---------: | :--------: |
-
-The ordering shown is not guaranteed, but the superblock and group descriptors are the first 2 groups if they are present.
-Each version of ext will have some variation on the individual structure of these segments such as Ext 4's own definition for inode and superblock structures.
-The more specific differences will be mentioned in their own sections later.
-Each of these block groups are sized to contain at least `8 * block size` blocks.
-If you do not know what a block size is it defines the smallest unit of work for the file system.
-Typically, the default blocksize is 4096 bytes (4 KiB), so this means units of work are done in 4 KiB.
-This means a file with a single character takes up 4 KiB of disk space, but also when more space is allocated it will be in a block size.
-Continuing on with the equation, this would mean a block group would contain 32,768 blocks.
-The size of each block group would then be the `number of blocks per group * block size`.
-With the default settings for the block count the size of a block group would be 128 mebibytes.
-Then you can get how many block groups will be in the system by taking the `file system size / size of each block group`.
-The table below summarizes these formulas.
-
-| Formula                                     | What For                 |
-| :-----------------------------------------: | :----------------------: |
-| 8 * block size                              | Blocks per group         |
-| # blocks per group * block size             | size of each block group |
-| file system size / size of each block group | # of block groups        |
-
-This kernel docs link will also show other values based on block size [Kernel Docs Blocks](https://docs.kernel.org/filesystems/ext4/blocks.html).
-
-Each block group will have a group descriptor, block bitmap, inode bitmap, and an inode table.
-This means if there are 12 block groups then there are also 12 of each of these segments as well.
-The way these block groups are stored is not directly next to each other.
-These separate groups are more so linked together while remaining in their own segments.
-The inode bitmap will be stored with other inode bitmaps, and the inode table is stored with other inode tables, so a layout looks more like the graphic below.
-The graphic doesn't accurately show how block size plays a part just how stuff is laid out.
-
-```
------------------------
-|       padding       |
-|     super block     |
-|     free space      |
-|     free space      |
-|                     |
-|   0th Group desc.   |
-|   1th Group desc.   |
-|   ...............   |
-|   nth Group desc.   |
-|                     |
-|   Reserved blocks   |
-|   Reserved blocks   |
-|   Reserved blocks   |
-|                     |
-|  0th group bit map  |
-|  1th group bit map  |
-|  .................  |
-|  nth group bit map  |
-|                     |
-|  0th inode bit map  |
-|  1th inode bit map  |
-|  .................  |
-|  nth inode bit map  |
-|                     |
-| inode table for 0th |
-| inode table for 1th |
-| .................   |
-| inode table for nth |
-|                     |
-|     Data blocks     |
------------------------
-```
-
-#### Padding
-
-The padding only exists before the first superblock to allow for the x86 boot sectors and other things.
-The padding is 1024 bytes which means the superblock, and thus group 0, is offset by 1024 bytes.
-If the block size is 1024 bytes then what would be group 0 is not used and the superblock moves to group 1.
-None of the other group blocks have padding before them.
-
-#### Superblock
-
-The superblock is essentially the metadata for the file system itself.
-While an inode is the metadata for a singular file, the superblock is what the file system uses to keep track on how to conduct its actions.
-Typically, the filesystem will only use the superblock in the first group, but many backups are stored in case of corruption.
-This superblock is incredibly important because if it gets corrupted then the OS won't be able to handle files properly, or it may act in a misconfigured manner.
-The default behavior is to set the sparse_super flag which will store a backup of the superblock on specific group numbers.
-These numbers are 0 and 1 and then numbers in the power of 3, 5, or 7.
-If this flag is not set it will store a backup of the superblock in every group which can be costly for disk space.
-Information about the super block can be revealed using `dumpe2fs <device>`; however, be warned that it will reveal **A TON** of information.
-You probably only want the first 60 lines so using head like so `dumpe2fs <device> | head -n 60` is more preferable.
-The dumpe2fs command will require sudo to run as well.
-The first 60 lines contains information like the OS type, block size, error behavior, inode count, block count, reserved block count, blocks per group, etc.
-It even contains the number of times the system has been mounted before it has been checked.
-After the first 60 lines it shows every block group which will explode your terminal with text hence the suggestion for the head command.
-If you want to know where your superblock backups are located `dumpe2fs <device> | grep "superblock"` will reveal that.
-The backups may not be the most up to date because they are only ever updated if the filesystem itself is changed.
-Resizing or tuning the filesystem would cause these backups to change.
-
-#### Group Descriptors
-
-The block group descriptors store information for their block group.
-The group descriptors store information on where to find that block group's free inodes, free blocks, and block bitmaps.
-The Group descriptors are stored in the Group Descriptor Table (GDT) which holds all the group descriptors.
-The GDT will be immediately follow superblocks, and it will also have backups stored.
-The backup behavior is just like that of the superblock depending on if sparse_super is set or not.
-
-#### Reserved GDT Blocks
-
-The reserved GDT blocks is the space between the GDT table and the block bitmaps.
-This space is kept for future expansion of the file system.
-The default settings allow for the file system to use this space to grow up to 1024 times the original file system size.
-This is the original file system size by the way, so don't expect your drive to grow 1024 times.
-
-#### Block Bitmap
-
-The block bitmap tracks what blocks are used for that block group.
-The location is not fixed, so the group descriptor has a pointer to its location.
-Each bit represents a block indicating if it's used or not.
-The size of the bitmap is one block, so if we use 4096 bytes as the block size the bitmap is able to indicate 32,768 blocks of 4096 bytes.
-This would mean if every block for that group is set 134,217,728 bytes or 128 mebibytes have been used.
-These are the same numbers we have calculated at the beginning.
-
-#### Inode Bitmap
-
-The inode bitmap functions similarly to the block bitmap.
-It just represents what inodes are for the inode table rather than group blocks.
-This also is contained within one block size, so 4096 bytes could represent 32,768 inodes.
-
-#### Inode Table
-
-The inode table is what holds all the inodes (the metadata for your files).
-This is where the name for the inode comes from since it is just an index to a node in an array.
-Since space is limited there can only be so many inodes defined.
-This means the maximum number of files you can create is your inode count.
-For normal users you will probably run out of space before that happens, but knowing this fact can lead to a unique DOS attacks if a server doesn't close their files.
-The number of inodes created is defined by the `filesystem size / inode ratio`.
-The inode ratio says to create an inode for every number of bytes, so if the ratio was 33,333 it would create an inode for every 33,333 bytes.
-The ratio should not be lower than the block size as it would create more inodes that could ever be used.
-
-
-The default inode_ratio is 16,385 bytes which creates 65,536 inodes for every Gibibyte which is just above the max value of an unsigned short.
-Each group then has its own inode table which is sized to have the `total inode count / how many block groups` there are.
-If we have a max inode count of 65,656 with 8 block groups and a file system of 1 gibibyte then there will be 8,192 inodes per group.
-The inode table then must contain all those inodes, so the size of the inode table is the `inode size * number of inodes per group`.
-
-So now we know how to size the table and how many inodes we have.
-The next step is to figure out how to get to that index.
-The inode table isn't stored at the very beginning like the superblock, and each group has their own table.
-So the inode table is not stored as a massive continuous block as you may think, but it is rather continuous segments per group block.
-Luckily the formulas for getting the inode are pretty easy since it involves getting the group and then the offset to the inode.
-The formula for finding out what block group an inode belongs to is `(inode_number - 1) / # inodes per group`.
-Keep in mind this will conduct integer division, so the answer will be floored.
-Once the group number is obtained it will look into its group descriptor to find the inode table.
-Then formula to get to the inode itself is `(inode_number - 1) % # of inodes_per_group`.
-You may notice in these formulas it is subtracting one.
-As a result there can't exist an inode of zero otherwise it would turn into -1.
-
-| Formula                                     | What For                  |
-| :-----------------------------------------: | :-----------------------: |
-| file system size / inode ratio              | Total # of inodes         |
-| Total # of inodes / # of block groups       | # of inodes in each group |
-| # of inodes in each group * inode size      | Inode table size          |
-| (inode_number - 1) / # inodes per group     | Block group of an inode   |
-| (inode_number - 1) % # of inodes_per_group  | Offset into inode table   |
-
-A problem does present itself though.
-How would the file system handle a case where there are two mounted Linux file systems that want to access an inode?
-An inode is just an index, so what happens if they want to access the same inode number?
-Luckily this has been thought about.
-The inode number is a combination of the device ID and the inode number.
-This way the inode remains an incrementing 32-bit unsigned number while the device ID is split into a major and minor ID that defines the device's type and class.
-As a result, inodes can only ever reference files in their file system, and why st_dev is in the stat struct.
-
-#### Data Blocks
-
-The data blocks are what's left for the file system to use after it has created itself.
-This is where the data for your files will be stored and where your inodes will point to.
-Other features like journaling will also be used in the data blocks as it is just a normal file.
-
-#### Ext2 & Ext3
-
-For the most part, ext2 and ext3 are the same system, but ext3 is ext2 with journaling.
-In fact, an ext 2 system can be upgraded to ext3 by tuning it to enable journaling.
-These two systems are succeeded by ext4, but these systems are still used to teach how files are stored.
-The group blocks remains the same, but the inode structure is different.
-In the Ext 2 and 3 file system the inode holds a variety of pointers that point to data blocks on disk.
-Depending on how large a file gets, different levels of indirection get used.
-The levels go from direct -> one level -> two levels -> three levels of indirection with each indirection level pointing to a table of pointers.
-You can think of each level of indirection as how many tables the system has to go through first before getting to a direct pointer to data.
-So for three levels of indirection the system would have to go through three tables before getting to the pointer to the file block.
-The graphic below shows how the different levels would behave.
-
-```
-
-Direct pointers
-
-|---|
-| 1 | ---> data block
-| 2 | ---> data block
-| 3 | ---> data block
-| 4 | ---> data block
-|---|
-
-One level of indirection
-
-              Pointers
-               |---|
-            -> | 1 | ---> data block
-           /   | 2 | ---> data block
-          |    | 3 | ---> data block
-          |    | 4 | ---> data block
-          |    |---|
-          |
-|---|     |    |---|
-| 1 |----/  -> | 1 | ---> data block
-| 2 |------/   | 2 | ---> data block
-| 3 |-----\    | 3 | ---> data block
-|---|     |    | 4 | ---> data block
-          |    |---|
-          |
-           \   |---|
-            -> | 1 | ---> data block
-               | 2 | ---> data block
-               | 3 | ---> data block
-               | 4 | ---> data block
-               |---|
-
-Two levels of indirection
-
-              Pointers    Pointers
-               |---|       |---|
-            -> | 1 |-----> | 1 | ---> data block
-           /   | 2 |---\   | 2 | ---> data block
-          |    | 3 |-\ |   | 3 | ---> data block
-          |    |---| | |   | 4 | ---> data block
-          |          | |   |---|
-          |          | |
-|---|     |          | |   |---|
-| 1 |----/           | --> | 1 | ---> data block
-| 2 |-----\          |     | 2 | ---> data block
-| 3 |--\   |         |     | 3 | ---> data block
-|---|   |  |         |     | 4 | ---> data block
-        |  |         |     |---|
-        |  |         |
-        v  v         |     |---|
- (to another table)  L---> | 1 | ---> data block
-                           | 2 | ---> data block
-                           | 3 | ---> data block
-                           | 4 | ---> data block
-                           |---|
-
-Three levels of indirection
-
-                                                         Pointers
-                                                          |---|
-              Pointers                                 -> | 1 | ---> data block
-               |---|                                  /   | 2 | ---> data block
-            -> | 1 |-------> (to another table)      /    | 3 | ---> data block
-           /   | 2 |---\                            /     | 4 | ---> data block
-          |    | 3 |-\  |                          /      |---|
-          |    |---| |  |                         /
-          |          |  |                        /        |---|
-          |          |  |           Pointers    /     --> | 1 | ---> data block
-|----|    |          |  |            |---|     /     /    | 2 | ---> data block
-| 1  |---/           |  -----------> | 1 | ---/     /     | 3 | ---> data block
-|----|               v               | 2 | ---------      | 4 | ---> data block
-                (to another table)   | 3 | ----\          |---|
-                                     |---|      \
-                                                 \        |---|
-                                                  ------> | 1 | ---> data block
-                                                          | 2 | ---> data block
-                                                          | 3 | ---> data block
-                                                          | 4 | ---> data block
-                                                          |---|
-```
-
-This does not compress how much space is used in the file system because it's just moving around where the chunks of pointers would be.
-This behavior helps keep the inode itself a consistent smaller size.
-Instead of having 100 contiguous direct blocks or dynamically resizing an inode it leaves some direct pointers, but then uses the space of one pointer to contain many other pointers.
-This way there is still dynamic sizing of files, but an easy way to create an array of inodes.
-Due to this behavior, the ext3 and ext2 inode is a fixed size of 128 bytes.
-How many direction pointers there are depends on the file system version, but the Unix file system has 12 direct blocks with 1 pointer each for the different levels of indirection.
-How many pointers there are per indirection table depends on the block size.
-For a 64-bit system (8 byte pointers) and a block size of 512 bytes it would mean a single table could hold 64 pointers.
-There is one issue with this approach though.
-If the inode structure is a consistent size, and only leaves room for the pointers to the tables then where do the tables go?
-The indirection tables have no other choice but to be placed into the data blocks which can cause fragmentation.
-This would create slower performance, and is a main fault of ext3 as performance significantly drops with higher inode counts.
-Additionally, this creates a maximum limit of 2 TiB (with a block size of 4 KiB) since storage is based on the pointers.
-With all this information the ext3 inode structure would look like below.
-
-| Inode Structure              |
-| :--------------------------: |
-| Attributes (stat struct)     |
-| Direct blocks                |
-| One indirection blocks       |
-| Two Indirection blocks       |
-| Three Indirection blocks     |
-
-#### Ext4
-
-Ext4 is currently the default file system used when you create a new Linux machine.
-Ext4 did originally start out as an extension for ext3 meant to be backwards compatible, but fears of stability resulted in a fork from ext3.
-This way existing ext3 users did not have to worry about changes to the existing system.
-It's a good thing they did because the ext4 system adds a lot more features that ext3 couldn't support.
-Ext4 is backwards compatible with ext3 and ext2 which allows mounting of those systems, but ext3 is only partially forwards compatible with ext4.
-This is because ext4 has a different inode structure, superblock structure, and block group behavior.
-The inode has a significant change in that instead of storing indirection pointers it uses extents.
-With ext2/3 the direction pointers stored every point the file resided in.
-For larger files it could quickly take up the space of the 12 direct pointers leading to less efficient indirection pointers.
-Extents on the other hand don't store every direct block of the file.
-It instead stores the continuous memory of the first and last block.
-This way less metadata is needed to represent a file as representing a range has a constant size, and data is represented contiguously.
-The ext4 extent structure looks like so
-```
-struct ext4_extent {
-    __le32  ee_block;       /* First logical block that the extent covers */
-    __le16  ee_len;         /* Number of blocks covered by this extent */
-    __le16  ee_start_hi;    /* High 16 bits of the starting physical block */
-    __le32  ee_start_lo;    /* Low 32 bits of the starting physical block */
-};
-```
-If we were to use an example of a file spanning 1,000 block sizes, the ext4 structure would simply have ee_len set to 1,000 while ext3 would contain 1,000 pointers.
-This would be assuming an unfragmented file, so extents are arranged in a tree to accommodate multiple extents.
-The extent tree is under the i_block member in the struct ext4_inode, and it is 60 bytes in size.
-The extent tree can hold three different kinds of structures those being the ext4_extent_header, ext4_extent_idx, and ext4_extent.
-Each of these structures are 12 bytes in size which means 5 can be stored in the i_block member.
-In reality, the number is 4 because the first 12 bytes are taken up by the extent_header.
-
-```
-struct ext4_extent_header {
-        __le16  eh_magic;       /* Magic number, 0xF30A */
-        __le16  eh_entries;     /* number of valid entries following header*/
-        __le16  eh_max;         /* Maximum number of entries that could follow the header. */
-        __le16  eh_depth;       /* Depth of this extent node in the extent tree */
-        __le32  eh_generation;  /* generation of the tree (Used by Lustre, but not standard ext4) */
-};
-```
-
-```
-struct ext4_extent_idx {
-        __le32  ei_block;       /* index covers logical blocks from 'block' */ 
-        __le32  ei_leaf_lo;     /* pointer to the physical block of the next *
-                                 * level. leaf or next index could be there */
-        __le16  ei_leaf_hi;     /* high 16 bits of physical block */
-        __u16   ei_unused;
-};
-```
-
-The reason the first 12 bytes are taken up by the header is because it reveals how far the tree goes.
-It tells how deep the tree goes as well as how many valid entries there are.
-The maximumm depth can only by 5.
-The max depth is 5 not because the i_block member is only 60 bytes (remember the first 12 are taken anyway), but because 5 is the smallest practical number.
-The equation used is `4*(((blocksize - 12)/12)^n) >= 2^32` given by the kernel docs.
-If the depth in the header is zero then the i_block structure can hold 4 leaf nodes.
-Once 5 nodes are needed the depth is increased and an index node is used.
-The ext4_extent_idx act as indirection like with ext3 indirection tables.
-They point to other blocks that can contain index nodes or leaf nodes with their own extent header.
-These extent blocks have their own extent_tail which is used as a checksum for that block.
-This checksum uses the inode number, uuid, inode generation number, and the entire extent block excluding the checksum.
-With this behavior the maximum file size that can be 16 - 256 TiB depending on block size.
-The leaf node then shows the extent itself.
-// insert more stuff
-
-The inode record takes up 256 bytes while the inode structure is 160 bytes.
-Ext4 can allocate larger sized inode even ones to the size of block.
-It is not practical to allocate to the size of a block, but each inode can have a different size unlike the consistent size of what ext3 had.
-The extra size is determined by the field i_extra_size in the struct ext4_inode.
-// insert more stuff
-
-A summary of the inode structure for ext4 looks like the table below.
-| Inode Structure              |
-| :--------------------------: |
-| Attributes (stat struct)     |
-| Extent tree / block map      |
-| Extended attribute block     |
-| Size for extended fields     |
-| sub second precision         |
-
-Additionally, ext4 has delayed allocation to try to allocate blocks in groups.
-This also has the benefit of not allocating temporary files by the time they get deleted.
-// insert more stuff
-
-#### Hash Trees
-
-
-
-### The Virtual Filesystem (VFS)
-
-### Linux Files
+You may notice there is no member for the name of the file, and this is because the name is completely separate from the inode.
+Resolving the name to the inode is handled by directories which is talked about later.
 
 #### Linux File Permissions
 
@@ -651,6 +198,7 @@ An owning user can conduct these actions to files they own.
 - Change group ownership to groups the owner is in (chgrp)
 - Rename (mv)
 - Delete (rm)
+
 Groups ownership also has some extent of control, but they cannot change permissions or ownership.
 What can not be changed normally is the file type even if it is part of the mode.
 To change a file to a directory or a directory to a file it would require changing the file system directly.
@@ -659,6 +207,91 @@ Continuing on with what can be changed in the mode we have only considered a fil
 A Linux file system has directories with their own permissions which have their own behavior
 When directories come into play it can determine if these above operations can even be conducted in the first place.
 
+### Linux Directories
+
+Directories are files that hold directory entries, also known as dentries, that map file names to their inode.
+Think of it like looking through a phone book that maps the phone number to a person which is also why it can be called a telephone directory.
+This implementation is why Linux people prefer to say directories instead of folders since it is a mapping rather than a collection.
+Or they just called them directories because that's what everyone else says, and they don't want to get clowned.
+Now, it's not like directories hold an entire path like `/var/log/auth.log`.
+If this was the case you can probably image how gargantuan the root directory would be if it was holding every single full path name.
+Instead, each directory along the way holds the individual file name with the inode to follow.
+If we look at a path like `/home/Jimbo/Documents/ACK.png` the traversal looks like this.
+
+```
+(    / (2)   )   (  home (20)  )   (     Jimbo (90)   )   (  Documents (114)  )
+|------------|   |-------------|   |------------------|   |-------------------|
+| home -> 20 |-> | Jimbo -> 90 |-> | Downloads -> 100 |   | report.ods -> 528 |
+| usr -> 30  |   | Timbo -> 73 |   | Documents -> 114 |-> | book.pdf -> 739   |
+| bin -> 40  |   | Limbo -> 39 |   | Pictures  -> 234 |   | ACK.png -> 300    |-> inode of ACK.png
+|------------|   |-------------|   |------------------|   |-------------------|
+```
+
+Here you can see how traversal is recursively looking inside each entry.
+If we were to traverse a path like `/home/Jimbo/AHHHHHH` the traversal would fail in `Jimbo` since that doesn't have an `AHHHHHH` entry.
+This traversal is simple, but it is very annoying for the programmer to get the full path if it wasn't provided.
+In order to construct the full path one would have to go through each directory and glue together the entry file names as they go.
+The structures for dentries reflect this.
+
+Table for struct ext4_dir_entry
+| Member   | Size      | Description |
+| :------: | :-------: | :--------------------------------------------: |
+| inode    | 4 bytes   | Inode number pointed to by dentry              |
+| rec_len  | 2 bytes   | Length of the dentry record in a multiple of 4 |
+| name_len | 2 bytes   | Length of the file's name                      |
+| name     | 255 bytes | File name as a character array                 |
+
+Table for struct ext4_dir_entry_2
+| Member   | Size      | Description |
+| :------: | :-------: | :--------------------------------------------: |
+| inode    | 4 bytes   | Inode number pointed to by dentry              |
+| rec_len  | 2 bytes   | Length of the dentry record in a multiple of 4 |
+| name_len | 1 byte    | Length of the file's name                      |
+| file_type| 1 byte    | File type code                                 |
+| name     | 255 bytes | File name as a character array                 |
+
+The C dirent structure.
+```
+struct dirent {
+    ino_t          d_ino;       /* inode number */
+    off_t          d_off;       /* offset to the next dirent */
+    unsigned short d_reclen;    /* length of this record */
+    unsigned char  d_type;      /* type of file; not supported by all file system types */
+    char           d_name[256]; /* filename; name is 255 bytes, but C needs the nul byte so 256 */
+};
+```
+
+These structures only hold enough space for the filename of that entry which is set to a max of 255 characters.
+You may wonder what the maximum size for an entire path may be, but that size isn't exactly well-defined.
+Technically there isn't a limit, but an imposed limit of 4096 bytes is typically used.
+That's what's normally seen under PATH_MAX in limits.h, but PATH_MAX isn't guaranteed to be defined.
+Continuing on, these structures reflect how directories are stored on disk at least by default.
+The default way to store directories on Linux is through linear/classic directories.
+They are called linear directories since they store entries as an array inside data blocks.
+The series of data blocks themselves are not linear because the file system can't guarantee that.
+The default structure used inside classic directories is the ext4_dir_entry_2.
+If there isn't a file type feature flag set then the entries will be ext4_dir_entry.
+Remember that filesystems works in block sizes, so a directory that only has one entry takes up one entire block in the data blocks.
+This is why your directory files say they take up 4096 bytes (the default block size) when you use ls -l.
+When more space is required more blocks are added.
+As an example my /etc directory says it takes up 12288 bytes which is 3 blocks of 4096.
+However, there is a quirk with directories.
+They don't downsize to avoid fragmentation, so if you were to remove all the entries in a data block the data block will not be reclaimed.
+The only way to reclaim the space would be to delete and recreate the directory.
+The ext4_dir_entry structs from above can take up 263 bytes, but they normally don't take up that space.
+The entries will only take up as much space as needed, so they can only be at most 263 bytes if the file name is 255 bytes.
+As an example, a file name of "cheese" will simply take up 6 bytes for the name instead of 6 bytes and 249 empty bytes.
+
+Most directories won't take up an entire block size, so unused entries are marked with an inode of 0 since 0 can't exist.
+For cases where the directory is encrypted another struct is appended after the name member that includes hash information.
+This extra entry is called ext4_extended_dir_entry_2 and is included in the rec_len which can make the record length up to 271 bytes.
+
+//Something about tails
+
+The values in the directory are not stored alphabetically.
+```
+00480014 02090014 65756c62 746f6f74 00000068
+```
 #### Owning a Directory
 
 The permissions of directories really show the importance of understanding that files live within a file system.
@@ -818,6 +451,8 @@ You are not creating a separate file because an additional inode is not created.
 You are creating two file paths that link to the same inode structure and thus the same data.
 In fact the special `.` and `..` entries in each dentry are hard links.
 The `.` is a hard link to the current directory's inode, and `..` is a hard link to the parent directory's inode.
+Using this fact allows you to determine how many direct subdirectories there are since all the lower directory `..` will point to the inode of the parent.
+This means if a directory has 36 hardlinks to it it has at least 36 subdirectories.
 Running the `./Links/special_dir.sh` script will show this which I have added some color coding to.
 This is what allows for relative traversal in the file system avoiding the need to constantly pwd to get your absolute path.
 In effect, a hard link is basically indistinguishable from the original file unless you were to look at logs.
@@ -921,6 +556,13 @@ There is also a limit to how many file descriptors can be made which can be foun
 
 #### Device Files
 
+#### File Descriptors
+
+Since the VFS is an interface for the userspace it has to return something for users to use.
+It is through the VFS system that gives file descriptors which is quite literally an index into a table.
+This table is known as the open file table which exists per process for files that it opens.
+This behavior is why some people say "everything is a file descriptor" although not completely wrong it misses the abstraction of the VFS that created it in the first place.
+
 ### File Descriptors and Process Execution
 
 //talk about fd table
@@ -958,6 +600,8 @@ Secure Programming Cookbook for C and C++ by John Viega and Matt Messier
 
 Secure Coding in C and C++ by Robert C. Seacord
 
+[Anatomy of the Linux File System](https://developer.ibm.com/tutorials/l-linux-filesystem/)
+
 [Inode Linux Man Page](https://www.man7.org/linux/man-pages/man7/inode.7.html)
 
 [Stat (2) Linux Man Page](https://www.man7.org/linux/man-pages/man2/stat.2.html)
@@ -966,9 +610,11 @@ Secure Coding in C and C++ by Robert C. Seacord
 
 [Oracle mkfs.ext4 Blog](https://blogs.oracle.com/linux/post/mkfsext4-what-it-actually-creates)
 
-[Linux Kernel Index Nodes](https://www.kernel.org/doc/html/latest/filesystems/ext4/inodes.html)
+[Linux Docs Kernel Index Nodes](https://www.kernel.org/doc/html/latest/filesystems/ext4/inodes.html)
 
-[Linux Block Groups](https://docs.kernel.org/filesystems/ext4/blockgroup.html)
+[Linux Docs Block Groups](https://docs.kernel.org/filesystems/ext4/blockgroup.html)
+
+[Linux Docs Virtual Filesystem](https://docs.kernel.org/filesystems/vfs.html)
 
 [Hard vs Soft Links](https://linuxgazette.net/105/pitcher.html)
 
