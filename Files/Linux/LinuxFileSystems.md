@@ -1,4 +1,4 @@
-### Linux File Systems
+## Linux File Systems
 
 Welcome to the Linux file system section!
 This section is a deep dive into how files get a home in the first place, and how they eventually get used.
@@ -9,10 +9,9 @@ I'll first talk about how the Extended File System (ext) is created, which is wh
 There will be quite large C structs in here to show how each component is defined, but you don't need to memorize them.
 They are there to show what goes into a file system, and a peek into how exactly your files work.
 
+### Common EXT Features
 
-#### Common EXT Features
-
-The extended file system (ext) takes its influence from the BSD Fast Filesystem where it used cylinder groups for hard disk drives.
+The extended file system (ext) takes its influence from the BSD Fast File system where it used cylinder groups for hard disk drives.
 Back then, the main mass storage devices were hard disk drives that had physically spinning disks and an actuator arm.
 In order to get the best performance you had to minimize movement of the actuator arm to avoid thrashing as well as avoid fragmentation by having data scattered around.
 The solution for this problem was to group data into cylinder groups to keep reads closer.
@@ -42,7 +41,7 @@ The table below summarizes these formulas.
 | # blocks per group * block size             | size of each block group |
 | file system size / size of each block group | # of block groups        |
 
-This kernel docs link will also show other values based on block size [Kernel Docs Blocks](https://docs.kernel.org/filesystems/ext4/blocks.html).
+This kernel docs link will also show other values based on block size [Kernel Docs Blocks](https://docs.kernel.org/file systems/ext4/blocks.html).
 
 Each block group will have a group descriptor, block bitmap, inode bitmap, and an inode table.
 This means if there are 12 block groups then there are also 12 of each of these segments as well.
@@ -86,18 +85,18 @@ The graphic doesn't accurately show how block size plays a part just how stuff i
 -----------------------
 ```
 
-#### Padding
+### Padding
 
 The padding only exists before the first superblock to allow for the x86 boot sectors and other things.
 The padding is 1024 bytes which means the superblock, and thus group 0, is offset by 1024 bytes.
 If the block size is 1024 bytes then what would be group 0 is not used and the superblock moves to group 1.
 None of the other group blocks have padding before them.
 
-#### Superblock
+### Superblock
 
 The superblock is essentially the metadata for the file system itself.
 While an inode is the metadata for a singular file, the superblock is what the file system uses to keep track on how to conduct its actions.
-Typically, the filesystem will only use the superblock in the first group, but many backups are stored in case of corruption.
+Typically, the file system will only use the superblock in the first group, but many backups are stored in case of corruption.
 This superblock is incredibly important because if it gets corrupted then the OS won't be able to handle files properly, or it may act in a misconfigured manner.
 The default behavior is to set the sparse_super flag which will store a backup of the superblock on specific group numbers.
 These numbers are 0 and 1 and then numbers in the power of 3, 5, or 7.
@@ -109,10 +108,10 @@ The first 60 lines contains information like the OS type, block size, error beha
 It even contains the number of times the system has been mounted before it has been checked.
 After the first 60 lines it shows every block group which will explode your terminal with text hence the suggestion for the head command.
 If you want to know where your superblock backups are located `dumpe2fs <device> | grep "superblock"` will reveal that.
-The backups may not be the most up to date because they are only ever updated if the filesystem itself is changed.
-Resizing or tuning the filesystem would cause these backups to change.
+The backups may not be the most up to date because they are only ever updated if the file system itself is changed.
+Resizing or tuning the file system would cause these backups to change.
 
-#### Group Descriptors
+### Group Descriptors
 
 The block group descriptors store information for their block group.
 The group descriptors store information on where to find that block group's free inodes, free blocks, and block bitmaps.
@@ -120,14 +119,14 @@ The Group descriptors are stored in the Group Descriptor Table (GDT) which holds
 The GDT will be immediately follow superblocks, and it will also have backups stored.
 The backup behavior is just like that of the superblock depending on if sparse_super is set or not.
 
-#### Reserved GDT Blocks
+### Reserved GDT Blocks
 
 The reserved GDT blocks is the space between the GDT table and the block bitmaps.
 This space is kept for future expansion of the file system.
 The default settings allow for the file system to use this space to grow up to 1024 times the original file system size.
 This is the original file system size by the way, so don't expect your drive to grow 1024 times.
 
-#### Block Bitmap
+### Block Bitmap
 
 The block bitmap tracks what blocks are used for that block group.
 The location is not fixed, so the group descriptor has a pointer to its location.
@@ -136,20 +135,20 @@ The size of the bitmap is one block, so if we use 4096 bytes as the block size t
 This would mean if every block for that group is set 134,217,728 bytes or 128 mebibytes have been used.
 These are the same numbers we have calculated at the beginning.
 
-#### Inode Bitmap
+### Inode Bitmap
 
 The inode bitmap functions similarly to the block bitmap.
 It just represents what inodes are for the inode table rather than group blocks.
 This also is contained within one block size, so 4096 bytes could represent 32,768 inodes.
 
-#### Inode Table
+### Inode Table
 
 The inode table is what holds all the inodes (the metadata for your files).
 This is where the name for the inode comes from since it is just an index to a node in an array.
 Since space is limited there can only be so many inodes defined.
 This means the maximum number of files you can create is your inode count.
 For normal users you will probably run out of space before that happens, but knowing this fact can lead to a unique DOS attacks if too many temp files get created.
-The number of inodes created is defined by the `filesystem size / inode ratio`.
+The number of inodes created is defined by the `file system size / inode ratio`.
 The inode ratio says to create an inode for every number of bytes, so if the ratio was 33,333 it would create an inode for every 33,333 bytes.
 The ratio should not be lower than the block size as it would create more inodes that could ever be used.
 
@@ -187,7 +186,7 @@ The inode number is a combination of the device ID and the inode number.
 This way the inode remains an incrementing 32-bit unsigned number while the device ID is split into a major and minor ID that defines the device's type and class.
 As a result, inodes can only ever reference files in their file system, and why st_dev is in the stat struct.
 
-#### Inode Contents
+### Inode Contents
 
 What exactly does the inode contain though?
 Well it contains the file type, permissions, location to data blocks, and other information.
@@ -221,14 +220,14 @@ struct stat {
 };
 ```
 
-#### Data Blocks
+### Data Blocks
 
 The data blocks are what's left for the file system to use after it has created itself.
 This is where the data for your files will be stored and where your inodes will point to.
 Other features like journaling will also be used in the data blocks as it is just a normal file.
 Sometimes though, a file can store its data inside the inode itself if it is small enough, so an inode may not always have data blocks.
 
-#### Ext2 & Ext3
+## Ext2 & Ext3
 
 For the most part, ext2 and ext3 are the same system, but ext3 is ext2 with journaling.
 In fact, an ext 2 system can be upgraded to ext3 by tuning it to enable journaling.
@@ -348,7 +347,7 @@ With all this information the ext3 inode structure would look like below.
 | Two Indirection blocks       |
 | Three Indirection blocks     |
 
-#### Ext4
+### Ext4
 
 Ext4 is currently the default file system used when you create a new Linux machine.
 Ext4 did originally start out as an extension for ext3 meant to be backwards compatible, but fears of stability resulted in a fork from ext3.
@@ -432,7 +431,7 @@ Additionally, ext4 has delayed allocation to try to allocate blocks in groups.
 This also has the benefit of not allocating temporary files by the time they get deleted.
 // insert more stuff
 
-### The Virtual Filesystem (VFS)
+### The Virtual File System (VFS)
 
 So far we have covered what happens on disk when it comes to EXT, but there is one big problem with disks.
 Disk I/O is an expensive task to conduct in terms of time, so those processes want to be minimized as much as possible.
@@ -446,14 +445,14 @@ All of this is possible because of the VFS.
 The main purpose of the VFS is to act as the file system interface for user space programs.
 Really, this entails a whole lot of work because this interface is massive.
 
-#### Defining Filesystems
+### Defining file systems
 
-One of the main behaviors is creating an abstraction to allow different filesystems to coexist.
+One of the main behaviors is creating an abstraction to allow different file systems to coexist.
 It does this by handling system calls such as open, stat, and chmod.
 This way, if your program needs to access a file from a USB using FAT32 while your host OS uses ext4 your program can't tell the difference.
 The thing is the VFS doesn't really define how files are handles.
-The filesystem itself defines to the VFS what it calls inodes, dentries, and other operations.
-First, the filesystem has to register itself with the file_system_type struct.
+The file system itself defines to the VFS what it calls inodes, dentries, and other operations.
+First, the file system has to register itself with the file_system_type struct.
 
 ```
 struct file_system_type {
@@ -468,17 +467,17 @@ struct file_system_type {
 };
 ```
 
-This struct describes the filesystem, but most importantly includes a mount function.
-This function is what allows you to mount a filesystem into any arbitrary point since it is required to return a tree starting at the root dentry of what you wanted.
+This struct describes the file system, but most importantly includes a mount function.
+This function is what allows you to mount a file system into any arbitrary point since it is required to return a tree starting at the root dentry of what you wanted.
 The unmount function is not held in here since the struct super_operations holds that information.
-Here the filesystem kills the superblock with kill_sb which shuts down the current instance of the filesystem.
-Other members like next, fs_supers, and owner are not in here since that's for the VFS to handle not the filesystem.
+Here the file system kills the superblock with kill_sb which shuts down the current instance of the file system.
+Other members like next, fs_supers, and owner are not in here since that's for the VFS to handle not the file system.
 For example, the 'next' member points to the next registered file system since the VFS stores a linked list of these structs.
-A list of supported filesystems can be found in `/proc/filesystems`.
+A list of supported file systems can be found in `/proc/filesystems`.
 When you cat this file you may see a lot of systems saying nodev which just means it doesn't need a block device to be mounted.
-These filesystems can be other virtual filesystems or even network filesystems.
-This file is also used by the mount command if it couldn't determine the type of filesystem to be mounted basically brute forcing what doesn't have nodev next to it.
-Here is what I have for my `/proc/filesystems`
+These file systems can be other virtual file systems or even network file systems.
+This file is also used by the mount command if it couldn't determine the type of file system to be mounted basically brute forcing what doesn't have nodev next to it.
+Here is what I have for my `/proc/file systems`
 ```
 nodev	sysfs
 nodev	tmpfs
@@ -516,8 +515,8 @@ nodev	autofs
 nodev	zfs
 nodev	binfmt_misc
 ```
-Any of these filesystems can be mounted, and when they do get mounted it's the job of the mount function to give a struct super_operations.
-The super_operations struct defines how the VFS can change the superblock of the mounted filesystem.
+Any of these file systems can be mounted, and when they do get mounted it's the job of the mount function to give a struct super_operations.
+The super_operations struct defines how the VFS can change the superblock of the mounted file system.
 ```
 struct super_operations {
         struct inode *(*alloc_inode)(struct super_block *sb);
@@ -590,7 +589,7 @@ Dentries are an exception since they deal with inode mappings, and their file da
 You might recognize commands like rmdir, ln (link/symlink), touch (create), rm (unlink), and mv (rename).
 This is where those system calls mentioned earlier relating to opening, creating, linking, and changing attributes are handled.
 Not all of these operations need to be defined.
-Thus, it defines if links, directories, or files even exist for the filesystem.
+Thus, it defines if links, directories, or files even exist for the file system.
 An another important function to mention is lookup for finding inodes.
 Then finally to define how individual file data is handled it is defined in the file_operations struct.
 
@@ -640,26 +639,233 @@ This is where the system calls for writing, reading, seeking, and such are defin
 When a file is to be opened the VFS creates a file structure and puts information into there.
 If you have used C these would be what those FILE* variables point to.
 
-These are all the structures that define your filesystems behavior for the Linux VFS.
+These are all the structures that define your file systems behavior for the Linux VFS.
 If you want to get into more granular detail on how individual file systems are coded they can be found in `linux/fs` (`/usr/src/<linux version>/fs`).
 
 
-#### Caching
+### Caching
 
-So far we have covered how filesystems define themselves to the VFS, but we haven't really talked about files yet.
-The next large task the VFS handles is path name lookups, and the operations related to files.
-This is sped up by caching inodes to avoid searching through the disk, but it will look on disk if it needs to.
-The VFS has two separate caches for this task.
+So far we have covered how file systems define themselves to the VFS, but we haven't really talked about how files are handled yet.
+As mentioned, the VFS is the interface for file operations, so it's responsible for operations such as file look up, opening, closing, reading, and writing.
+Those are the operations you can see in file_operations, yet the VFS still hides its inner workings.
+In order to make these kinds of operations much faster, and by virtue of being in RAM, the VFS caches commonly used objects.
+These caches exist in RAM, so the information is not persistent however the information can be written to disk.
+There are three caches in the VFS which are the inode, directory, and buffer cache.
+
+#### Inode Cache
+
+The concept of the inode cache is to hold the most recently used inodes, or newly created ones.
+The implementation of the inode cache is under `fs/inode.c` and `/include/linux/inode.h` not to be confused with inode definitions of the ext systems.
+The inodes stored in the inode cache are the VFS's version of an inode which is very different from the ext inode.
+It's an extensive struct, so I'll list a few of the more important members.
+- i_mode: Permissions and type of the file in an ext style
+- i_uid: user id
+- i_guid: group id
+- i_count: Inode counter for how many open references there are to the file such as a process using it
+- i_link: How many hard links there are. Systems that don't have hard links set this to 1
+- i_op: inode operations
+- i_fop: file operations
+- i_sb: pointer to associated superblock
+- i_hash: Hash of the inode
+- i_dentry: The parent directory of this inode
+
+The way the VFS stores its inodes is with a hash table where the hash uses the superblock pointer and the inode number.
+The hash function involves a mask, some bit shifting, a golden ratio prime, and how many bytes the L1 cache has.
+This hash function does accept NULL pointers for the superblock so that inodes with no superblock can still be added.
+This could be files that don't reside on disk like sockets.
+However, this would just hash the inode number, and it is possible to have identical inode numbers from different systems.
+In order to resolve collisions, separate chaining is done which means each index of the hash table is actually a linked list.
+In this case, the linked list is specifically a doubly linked list.
+The code snippets below show how this process is done.
+```
+/* this function is in linux/fs/inode.c */
+void __insert_inode_hash(struct inode *inode, unsigned long hashval)
+{
+	struct hlist_head *b = inode_hashtable + hash(inode->i_sb, hashval);
+
+	spin_lock(&inode_hash_lock);
+	spin_lock(&inode->i_lock);
+	hlist_add_head_rcu(&inode->i_hash, b); -----------------------------\
+	spin_unlock(&inode->i_lock);                                        |
+	spin_unlock(&inode_hash_lock);                                      |
+}                                                                       |
+                                                                        |
+/* this inline function is in /include/linux/rculist.h */               v
+static inline void hlist_add_head_rcu(struct hlist_node *n, struct hlist_head *h)
+{
+	struct hlist_node *first = h->first;
+
+	n->next = first;
+	WRITE_ONCE(n->pprev, &h->first);
+	rcu_assign_pointer(hlist_first_rcu(h), n);
+	if (first)
+		WRITE_ONCE(first->pprev, &n->next);
+}
+```
+
+You may notice the rcu suffix used on hlist_add function.
+RCU stands for read-copy-update which is a synchronization method in a read heavy environment that allows for concurrent reading even under updating.
+It is similar to reader-writer lock synchronization, but avoids having to lock a structure when writing.
+RCU can do this because it splits updating into a removal and reclamation phase.
+The removal phase, as it implies, removes the reference from the structure either by deleting it or updating it.
+This is done by simply updating the reference.
+Yep, it just overwrites the reference so further readers get that new value instead.
+Sometimes this may involve creating a copy and then writing the pointer of the copy hence read-copy-update.
+This seems like a crazy dangerous move because what happens if the update is interrupted mid-way?
+Luckily the kernel docs on RCU assures us this is fine because "RCU-based updaters typically take advantage of the fact that writes to single aligned pointers are atomic on modern CPUs, allowing atomic insertion, removal, and replacement of data items in a linked structure without disrupting readers".
+By abusing atomic actions, readers parsing through a linked list will only see the old value or the new value.
+They can't read a middle value because there is no point where updating was interrupted.
+This has to be done carefully though because the compiler can mismatch the expect order of assignment.
+This can mean the pointer can be assigned first before the members of what is pointed to is changed.
+This is why `rcu_assign_pointer` is used, which is a define statement in `/include/linux/rcupdate.h`, so that it ensures the assignment can be atomic.
+For reading, `rcu_dereference` is provided in the same file so that copying into a local variable is protected from optimization shenanigans.
+After the removal phase, the reclamation phase starts once `synchronize_rcu()` or `call_rcu()` is called.
+Before the old value can be reclaimed though it has to wait for everything using that old value to stop.
+This period where the reclaimer is waiting is known as the grace period.
+This is the stage where we see the actual synchronization of RCU.
+As readers are reading they indicate areas where they enter read side critical sections.
+Read-side critical sections known from `rcu_read_lock()` which indicates the start and `rcu_read_unlock()` which indicates the end.
+These critical sections are not allowed to block, so that they remain predictable.
+The reclaimer only needs to worry about read-critical sections that started before the grace period since any locking done after will have the new value.
+The grace period lasts for as long as the last reader leaves its read critical section.
+Once the last reader is done then reclamation can begin which may be a simple free call.
+Code below shows how this process as a whole looks like.
+
+```
+
+/* reader */
+    struct my_data *data;
+    rcu_read_lock();
+    data = rcu_dereference(my_rcu_data);
+    if (data) {
+        // Access the data safely
+        printk(KERN_INFO "Reader: data value is %d\n", data->value);
+    }
+    rcu_read_unlock();
+
+
+/* writer */
+struct my_data *new_data, *old_data;
+ 
+    // Create a new copy of the data
+    new_data = kmalloc(sizeof(*new_data), GFP_KERNEL);
+    if (!new_data) {
+        printk(KERN_ERR "Writer: kmalloc failed\n");
+        return;
+    }
+    // Initialize the new data
+    new_data->value = 42;
+ 
+    // Replace the old data with the new one
+    old_data = xchg(&my_rcu_data, new_data);
+ 
+    // Schedule the old data to be freed after the grace period
+    call_rcu(&old_data->rcu_head, rcu_free_my_data);
+
+```
+
+
+Now that we have gone over how the lists are used we can go over what the lists are.
+Two lists are maintained by the VFS which are the used (nr_inodes) and unused list (nr_unused).
+The used list refers to files that have processes using them with an i_count > 0 and has at least 1 hard link to it with n_links > 0.
+Newly created inodes are also placed here since they are more than likely going to be used soon.
+The unused list has files with an i_count = 0 which means no processes are using the inode, but it's still in the cache in case it will be used.
+There is technically a dirty list, but the code for calculating dirty nodes is simply used nodes minus unused nodes.
+If there are more used nodes then the rough estimate says there are some dirty nodes.
+
+
+### Directory Cache (Dcache)
+
+The dcache is a very simple cache, but also holds a dark secret.
+The dark secret is that these have been the dentries you've been using along.
+Of course, the dentry file is still stored on disk, but the dcache isn't responsible for updating that.
+The dcache solely exists in memory, and any updates that need to be done will occur in the inode cache since directories have inodes.
+
+
+### Buffer Cache
+
+The directory cache is a pretty simple cache in that it holds a mapping of the pathname to a file to its inode.
+The VFS basically takes the path argument from commands like chmod, stat, and open and searches for it in this cache.
+
+
+The buffer cache is a global structure all the file systems share that the kernel controls for its data buffers.
+Anything read from a disk is placed into here so that same data is read from this buffer instead of on disk.
+Anything getting written to disk is also stored in the cache, but depending on if the system is write-back or write-through determines when that data does get written to disk.
+Since each file system is sharing this structure, each buffer is uniquely identified with a block number and the device ID.
+File also get read and written to in blocks, so this cache is caching blocks of data not just the exact data you have read or written.
+
+
+
 One is an inode cache for any kind of file while the other one is a dentry cache which holds dcaches.
 Dcaches are never written to disk and only exists in RAM.
 As a result, since the VFS is responsible for look ups which use dentries this technically means dentries are a facade.
 At first this may sound confusing because you're still able to alter entries in a dentry, but remember inodes point to any kind of file.
 We still have the inode cache, so it is here where changes are reflected on to disk if the inode did reside on disk.
-The inode cache can also point to inodes that exist in memory like that from a pseudo filesystem.
+The inode cache can also point to inodes that exist in memory like that from a pseudo file system.
 
 
+```
+Overview of the system
+
+|----------------------------|
+| User & Kernel Applications |
+|----------------------------|
+              ^
+              |
+              v
+  |-----------------------|
+  | System call interface |
+  |-----------------------|
+              ^
+              |                                  |-------------|
+              v                         /------->| Inode Cache |
+   |---------------------|             /         |-------------|
+   | Virtual File System |<-----------<
+   |---------------------|             \         |-----------------|
+              ^                         \------->| Directory Cache |
+              |                                  |-----------------|
+              v
+   |----------------------|
+   | Mounted File Systems |
+   |----------------------|
+              ^
+              |
+              v
+      |--------------|
+      | Buffer Cache |
+      |--------------|
+              ^
+              |
+              v
+       |--------------|
+       | Disk Drivers |
+       |--------------|
+
+```
 
 
+### Sources
 
-These are the VFS's version of inodes and dentries since it wants to cache the filesystem's definition of said constructs.
+[Anatomy of the Linux File System](https://developer.ibm.com/tutorials/l-linux-filesystem/)
 
+[Inode Linux Man Page](https://www.man7.org/linux/man-pages/man7/inode.7.html)
+
+[Oracle mkfs.ext4 Blog](https://blogs.oracle.com/linux/post/mkfsext4-what-it-actually-creates)
+
+[Linux Docs Kernel Index Nodes](https://www.kernel.org/doc/html/latest/filesystems/ext4/inodes.html)
+
+[Linux Docs Block Groups](https://docs.kernel.org/filesystems/ext4/blockgroup.html)
+
+[Linux Docs Virtual Filesystem](https://docs.kernel.org/filesystems/vfs.html)
+
+[Linux Kernel inode.c](https://github.com/torvalds/linux/blob/master/fs/inode.c)
+
+[Linux Kernel Docs RCU](https://www.kernel.org/doc/html/latest/RCU/whatisRCU.html)
+
+[Lwn.net What is RCU Fundementally Part 1](https://lwn.net/Articles/262464/)
+
+[Understanding Ext4 Layout](https://blogs.oracle.com/linux/post/understanding-ext4-disk-layout-part-1)
+
+[Understanding Ext4 Layout Part 2](https://blogs.oracle.com/linux/post/understanding-ext4-disk-layout-part-2)
+
+[Ext4 Extents](https://blogs.oracle.com/linux/post/extents-and-extent-allocation-in-ext4)
