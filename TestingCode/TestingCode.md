@@ -888,6 +888,8 @@ There are different types of test doubles to implement which are
 - dummies
 Really it boils down to just mocks and stubs.
 A spy is a manually written mock with capturing, a dummy is a stub returning a hard-coded value, and a fake is a stub that the production code does not use for observation or control.
+From what I've seen, most testing frameworks call anything that creates a test double a mock.
+The language also plays a role as weakly typed languages have an easier time changing function, but for a language like C usage of --wrap or conditional compiling makes creating test doubles much more difficult.
 If you remember the different types of dependencies I mentioned earlier this is where mocking and stubbing come into play.
 There is a slight, but distinct difference between mocking and stubbing which comes down to what dependency you are faking.
 Stubbing is used if you want to fake incoming data such as a database retrieval or a function return.
@@ -901,9 +903,7 @@ Mocks are outgoing interactions and are your MEPOs, so you are expected to analy
 This can involve checking what parameters were passed in, how many times the dependency was called, or checking in-memory data.
 Here you can expect to have assert statements.
 If you are still confused, stubs help the test move by emulating behavior, but a mock emulates and examines behavior.
-Ideally you should only have one mock per test since they are a MEPO, but sometimes frameworks don't play so nicely.
-From what I've seen, most testing frameworks call anything that creates a test double a mock.
-The language also plays a role as weakly typed languages have an easier time changing function, but for a language like C usage of --wrap or conditional compiling makes creating test doubles much more difficult.
+Ideally one mock per test is preferable, but as we are verifying units of work there may be multiple things to mock.
 Sometimes more difficult testing leads to mocks that also stub, but this is alright as long as the stub portion is not asserting behavior.
 
 #### Mocks Exposing Implementation
@@ -1039,34 +1039,33 @@ I mean it does but not completely.
 Unit tests are great at figuring out if isolated behavior works as intended, so that you know that component is at least correct.
 However, you can still have individually correct units that are not integrated correctly, or the system you are using actually expects something different.
 This is where integration testing introduces itself.
-Essentially, an integration test is what a unit test isn't
-A unit test has the principles of
+Essentially, an integration test is what a unit test isn't.
+Unit tests have the principles of
 - Verifying a single unit of behavior
-- Does it quickly
+- Conducting tests quickly
 - Isolation from other tests
 
 A unit test must have all of these conditions met, but an integration task would be missing at least one.
-An integration test may verify multiple units of behavior, be slow due to network wack, or use a real shared component of the system.
-Although, you can turn something that would be an integration test into a unit test by mocking out the dependencies.
-This way you don't have external dependencies to worry about.
-It's just a question of is possible or practical to.
+An integration test may verify multiple units of behavior, be slow due to network wack, or use a shared dependency that can alter other tests.
+Although, you can turn a would be integration test into a unit test by mocking out the dependencies.
+It's just a question of possibility or practicality.
+In reality, an integration test still desires some aspects of a unit test such as isolation and speed otherwise you would be closer to an end-to-end test.
 Integration tests go through much more code than a unit test which makes it more difficult to determine an error, but means more code is regression tested.
 The majority of the work will likely be done by unit tests as they are smaller, faster, and direct, but integration tests fill in those gaps unit tests can't reach.
+You are still able to mock dependencies so that you can see if behavior is correct or avoid relying on external things.
+You can have a test that looks like unit tests but is actually an integration test.
+It really depends on the scenario.
+Unlike unit tests though, integration tests view dependencies differently as the goal isn't so much isolation but cohesion.
+Only the out-of-process dependencies are a concern as we want to see how different dependencies in your code work together.
+Some dependencies you have complete control within your program and they are managed dependencies.
+Most commonly this is a database.
+You have the ability to configure the environment and reset if you need to .
+Unmanaged dependencies are things you can't fully control like using an external cloud service.
+You had no say in how the internals were made, and you only really know observable behavior through calling it.
 Now, you still have to keep in mind that you are writing meaningful tests.
 Just because an integration test opens more possibilities doesn't mean you should write tests for every crashing error condition.
 Sure you can try to test for some obscure failure, but if it's not a concern don't write the test.
 Bad tests are just as good as no test because they are functionally equivalent.
-
-Now, don't forget that integration tests still have aspects of unit tests.
-You are still able to mock dependencies so that you can see if behavior is correct or avoid relying on external things.
-You can have tests that are a mix of unit tests and integration test it really depends on the scenario.
-Unlike unit tests though, integration tests view dependencies differently as the goal isn't so much isolation but cohesion.
-Only the out-of-process dependencies are a concern as we want to see how different dependencies and your code work together.
-Some dependencies you have complete control within your program and they are managed dependencies.
-Most commonly this is a database.
-You have the ability to configure the environment and reset if you need to.
-Unmanaged dependencies are things you can't fully control like using an external cloud service.
-You had no say in how the internals were made, and you only really know observable behavior through calling it.
 
 ```
          Our program
@@ -1077,7 +1076,7 @@ You had no say in how the internals were made, and you only really know observab
 |     |             ^        |                                | A user table exists        |
 |     v             |        |                                | columns for uid and stuff  |
 |  writeFile()    main()     |     implementation             | surrogate keys             |
-|                            | ----------------------|        | uses this username         |
+|                            | ----------------------|        | I am the one changing it   |
 |============================|                       |        |                            |
              |                                       |        |============================|
              | observable behavior                   |
@@ -1096,71 +1095,248 @@ You had no say in how the internals were made, and you only really know observab
                                         | config file in /etc/       |
                                         | thing in ~/.config/hi      |
                                         | temp files in /tmp         |
-                                        |                            |
+                                        | I can create files         |
                                         |                            |
                                         |============================|
 ```
 
 Since your main concern is what you can manage you want to use your *real* managed dependencies.
 You want to mock/stub unmanaged dependencies as they can be unreliable or just not important.
-Now you may wonder if in-memory databases are viable here.
-They certainly are viable if you desire speed as they are much faster than dealing with typical I/O.
-It would also ensure isolation between tests so that each test has its own database making the test feel more like a unit test rather than integration test.
-However, be aware that an in-memory database can't be an exact replica of your real database.
-sqlite3 is probably what you'll use, and that doesn't support stored procedures.
+I know it may sound weird saying that you should not mock a dependency, but integration testing is meant to test the program in a close to real fashion.
+A unit test would mock/stub out the database because those rely on isolation, but now we need to see how the program acts for real.
+So remember, *managed* dependencies are what you want to keep real.
+Probably the most notorious managed dependency is a database.
+This then of course means you have to set up the database in a way to make it consistently testable while maintaining integrity of real business data.
+The problem is this makes testing *incredibly* annoying depending on how you set up the environment.
+Honestly, this is very situation dependent as there are many techniques with their pros and cons.
+
+#### Using the Actual Real Database
+
+Okay I know that I said integration testing needs to use the real deal, but you can't just go using the real deal.
+This is where you have important business data and all it takes is a SQL statement like `DELETE FROM Users` to delete every single user.
+If you're wondering why this statement is a horrific bug it's because the DELETE clause has no WHERE condition.
+It should instead be like `DELETE FROM Users WHERE user_id = 2720968260720608` because a DELETE without a WHERE deletes the entire table data instead.
+Obviously, you don't want that in your *actually real* database, so you have to *fake real* the database instead.
+There are a variety of ways to *fake real* a database each with their benefits and drawbacks.
+
+#### Dedidated WAM (In-memory Database)
+
+You may wonder if in-memory databases are viable here.
+They certainly have their advantages.
+They are viable if you desire speed as they are much faster than dealing with typical I/O.
+Additionally, they are very easy to just spin up and kill which would also ensure isolation between tests making the test feel more like a unit test rather than an integration test.
+Well sweet!
+Speed and isolation fixing the largest issues in integration testing!
+They are also supposed to behave just like the real database.
+From the sound of it an in-memory database seems like the obvious choice, but that is where they trick you.
+It really does seem that simple to use, but be aware that an in-memory database **is not** an exact replica of your real database.
+I've used sqlite3 and currently it doesn't support stored procedures.
 Let alone usage of variables which has to be hacked in with a temporary table.
 sqlite3 also has its own behavior that may not correlate well to a big relational database.
-However, if you are using your database as a simple place to just persistently hold data it can work.
-If you are already using sqlite3 as your main database anyway then an in-memory sqlite3 database probably doesn't harm you as you're already dealing with the restrictions.
-Just know that a database is typically a managed dependency you wouldn't mock.
-This then of course means you have to set up the database in a way to make it testable.
+There are other in-memory options out there apart from sqlite3, but they share the same problems of having potentially different behaviors than the real one.
+If you are using different providers, you have to consider if the language of SQL is different between the in-memory database and the real database.
+Some features can be supported in one but not the other.
+Sqlite3 has the RETURNING clause which is a non-standard SQL operation.
+Most of the time the same database provider you are using has an in-memory option, but even then there can be differences.
+Specific behavior like case-sensitivity or loading can be different.
+So even though in-memory databases sound great, that can give you false-positives or false-negatives that you don't know about until you try to use the real database.
+If you truly wanted to be 100% sure about correct functionality you would need to make in-memory tests and real database tests.
+At which point just go for a proper integration test of using the real thing.
+Despite these issues, they aren't that uncommon to hear about in integration testing.
+They may be acceptable if the usage of the database is quite simple in just holding data without fancy triggers and such.
+Compatibility would be much better if the in-memory and real database were provided by the same library.
+One of my projects I was using a sqlite3 database, but in testing I used an in-memory sqlite3 database.
+I didn't have any issues of compatibility, so the in-memory database worked just fine.
+Sometimes they work, sometimes they don't.
+This one gets a big "it depends" sticker.
 
-### The Unity of Assertions and Failure
+#### Dedicated Test Database
+
+So if in-memory databases are not the best option the next logical step is to have a separate real test database.
+A database separate from the real thing, but implements what is expected of the real thing that an in-memory wouldn't.
+This sounds pretty good, but there is a risk in having unsynced real and test databases schemas.
+If you were smart about your development, you would include the SQL script to create the database in your version control.
+Any changes to script is seen in one place, and test databases can use that script to stay up to date on integration tests.
+You could also have a seed script to add data to the database.
+The problem is there is only one database for everyone.
+Other developers conducting tests might interfere with others.
+Somebody forgets to clear their state, and now every future test is broken.
+What if a developer is trying to test an implementation using different tables than production?
+Then only their tests would work and everyone else would fail.
+On top of these issues the infrastructure has to be in place to hold a dedicated database.
+This technique can work if it's a really small application only requiring one database with one or a handful of developers.
+
+#### Database Sandbox
+
+Well a dedicated database did have some promise, but its largest issue is having to share it with others.
+Very selfish of us programmers to want everything for ourselves I know.
+Selfishness aside, we can't ignore those problems because they are legitimate concerns in testing.
+Somehow we need to effectively have a dedicated database, but each developer could have their own personal database.
+In-memory databases would be great, but as we covered they aren't a 1 to 1 comparison.
+Well, what if we just replaced in-memory databases with a real database for each person.
+This is the basic idea behind a database sandbox.
+Each developer has their own separate sandbox to work with.
+This kind of setup is most beneficial to use if the application relies heavily on a database.
+However, this is getting into enterprise territory where you may need a license to conduct this kind of testing.
+Azure and Oracle provide methods for sandboxing, but there are also third parties which also require a subscription.
+Then it gets into the wonderful world of different syntaxes per each service making migrations difficult.
+Regardless, I'll mention the different methods database sandboxing can be done.
+If you want a more indepth read <u>xUnit Test Patterns Refactoring Test Code</u> by Gerald Meszaros is what I used.
+The different methods of conducting sandboxing either give each person an individual database instance or a simulates giving an individual instance.
+These methods are a dedicated sandbox, schemas per test runner, and partitioning.
+A dedicated database sandbox is probably what you were thinking of first when I mentioned sandboxing.
+Each person is given a database instance either on their local machine or through a shared server.
+It's the most flexible as anything can be done including table and data changes.
+A Database schema per test runner uses built in database support of multiple schemas.
+There is one database instance, but multiple databases in the instance.
+This method has an advantage in being able to create a shared schema everyone uses, but reduces the customization offered in the previous method.
+Everyone would also be using the same structure if a shared schema was used.
+One disadvantage is that everyone is using the same instance, so it can create a bottleneck and is not as isolated.
+The lack of isolation can create naming issues, or modification of other schemas if permissions are not set correctly.
+With Database partitioning it actually doesn't partition the database.
+That is basically what the per schema method is doing.
+It instead partitions the data that testers are testing with, so that everyone can use a single database instance.
+Essentially, it tries to maintain that all data is completely unique and won't conflict.
+Testers can't modify the schema, as that's what everyone is using, and they can't modify other tester data.
+In order to ensure uniqueness, testers have to put more effort into avoiding hardcoding values and instead values unique to their system.
+
+#### Docker
+
+Docker is another method of creating a fake real database.
+It's an application that creates loosely virtual lightweight environments called containers that are independent of the host OS.
+These containers can be shared with other developers so that everyone is working on the same environment.
+Depending on the tools available, each test can have its own database, or each test can use one fake real database.
+In a way it's combining the temporary nature of an in-memory databases with the necessity of real behavior of a dedicated test database.
+Tools like testcontainers supports a variety of languages, and provides ways for each individual test to have docker containers.
+This method is a lot more complicated, but provides isolation in its special, extreme way.
+You'll use a lot of fixtures, and there will be a lot of implied behavior making debugging a lot more difficult.
+
+#### Rollbacks & Commits
+
+Databases have transactions which allows you to rollback or commit changes.
+Rollbacks revert to a previous transaction while a commit actually writes to the database.
+In this case you'll never commit since you don't want the test data to be written.
+The test will do what ever in the database then after that the database is rollbacked.
+You will have to use implicit fixtures for this since that's the only way to ensure a rollback whether the test fails or succeeds.
+This technique can kinda work, but only if nested transactions are supported.
+Sqlite3 doesn't support this, so any transactions attempted within the code won't work.
+Then the integration test will probably fail, and you're stuck trying to debug a nasty bug.
+Even if nested transactions are supported your production code logic may not expect to have an outer transaction.
+
+#### Reset Database
+
+A cheap way to get isolation between tests is to simply reset the entire database at the beginning of each test.
+Database snapshots, or using a reset script have been some ways I've seen searching around.
+You can defintely see why you shouldn't use the actual real database if you're going to use this tactic.
+It's for the fake real database when you only have one instance and one database, and just need something to get testing done.
+It's quite expensive to do since you need to set up data for each an every test without the benefits of in-memory throwaways.
+
+#### Check Just API calls
+
+This would be treating a managed dependency more as an unmanaged dependency and really doesn't prove anything.
+You would be proving that the database call did happen, but not if the database actually did the work.
+At this point it would be an overspecified test checking for implementation behavior (was this API called) rather than the database itself.
+You have to consider the effort it would take to fake library functions involving the database to really verify a few lines of code.
+If you find yourself having to do this for an integration test then it's best to not write an integration test.
+
+#### No Integration Test
+
+You may really want to test that components, but sometimes it's best not to.
+Once again, tests should be meaningful, and if a test can't prove anything it's worthless.
+No need to force yourself in creating buggy, monstrous tests.
+You want to keep managed dependencies as real as you because if you mock them out you're more so proving the mock works than the real thing.
+This doesn't rule out unit tests though which you then have to rely on.
+
+### The Unity of Assertions
 
 Interestingly enough there isn't much discussion around the role assertions play in production code to help in testing.
-I've only seen Korikov mention it in 8.2 in an explanation box in his unit test book.
-Normally, you see assertions all over the place in testing code because you have determined this condition should always be true or false.
-If that's not the case the test has failed, but I don't see this mentality transfer to production as much.
-Only from reading secure coding documentation like NASA's Power of Ten/JPL Coding Standard and MISRA C have I heard of the importance of using assertions in production code.
-However, those standards go over creating secure production code rather than testing code, so I'm left with the opposite problem.
-Looks like we'll have to do some reasoning of our own.
-Assertions on both sides play the same role in stating that this condition should always be true.
-It's just one is designed to crash the program, and the other had to get around that so more assertions could be done.
-From the way I see it, the assertions in production code for preconditions, invariants, and postconditions don't need to be tested.
-If those conditions fail boom you caught a massive bug without testing for it.
-It's not like you won't see the program crash during testing either because that will also halt.
-Plus, you would not unit test for a condition you know should never happen, especially when you have already placed a mini test to catch that condition *if* it did.
-You would only test if it's part of the unit's contract to handle cases like NULL.
-Then when it comes to integration testing your production code assert statements still act as protection dwarfs.
-So really there isn't a point in explicitly testing assert statement.
-Even if you wanted to it's as simple as checking if `assert(x == 1)` to `assert(x == 2)` fail.
-These asserts abide by the fail fast principle, by you know exploding the program, so really you can extend the avoidance of testing to here as well.
+I've only seen Korikov mention it in 8.2 in an explanation box in his unit test book, and even then it was barely one.
+You see assertions all over the place in testing code because you have determined this condition should always be true or false.
+If the condition isn't true the test has failed, but you can still use assertions in production code.
+Only from reading secure coding documentation like NASA's Power of Ten, JPL Coding Standard, and MISRA C have I heard of the importance of using assertions in production code.
+However, those standards go over creating secure production code rather than how to test code, so I'm left with the opposite problem.
+Looks like I'll just have to insert my opinion in here.
+Assertions in testing and production play a similar role in stating that this condition should always be true.
+They are different of course in that assertions in production code crash the program immediately and are designed to be removable while test assertions provided by the framework fail a test immediately and aren't meant to be removed.
+If you could remove test assertions then your act statement is just nonexistent which makes a test useless.
+Production assertions are there with the idea of if they don't occur then the function contract is maintained by itself and those using it.
+The contract being preconditions, invariants, and postconditions.
+The contract is something other programmers abide by, so this means production assertions catch **programmer errors**.
+Unit tests do catch programmer errors, but that is from mismatched expected behavior rather than passing in a negative number when a function doesn't handle negatives.
+Additionally, the assertions are always there while a test has specific input that may trigger an assertion.
+
+```
+//invariant is more of a concept
+//Here it is every time someOperation() occurs the times_called increases
+
+int someOperation(int var_1, int var_2){
+    //errors in the precondition are the fault of the client passing bad values
+    /* precondition */
+
+    assert(var_1 > 0);
+    assert(var_2 > 0);
+
+    /* precondition */
+
+    int result = var_1 + var_2;
+    ++times_called;
+
+    //errors in postcondition is the fault of this function
+    //post condition here to catch integer overflows
+    /* postcondition */
+
+    assert(result > var_1);
+    assert(result > var_2);
+
+    /* postcondition */
+
+    return result;
+}
+```
+
+In this example it's the fault of the client if it were to pass anything below 0.
+If the result were to somehow decrease in value, like through an overflow, the function itself is at fault.
+However, it can be argued that the postcondition here can be used as a check to validate no operations should cause an overflow.
+Either way if those conditions fail boom you caught a massive bug without explicitly testing for it.
+This raised the question if you should test if the program purposely crashes.
+From the way I see it, the assertions in production code for preconditions and post-conditions don't need to be tested.
+For preconditions, it doesn't make much sense to input data that is known to be extraneous especially when you have already mini tests in place to catch *if* it does happen.
+Trying to test assertion guards is testing something an interface was never expected to handle which is why those assertions exist in the first place.
+For postconditions, it's not really the job of unit test to verify because that's on the fault of the function messing up for the most part.
+Plus, it just means that behavior is not obviously buggy still requiring you to verify if the ending behavior is correct.
+So really there much of a point in explicitly testing assert statement.
+If you wanted to it's as simple as checking if `assert(var_1 > 0)` works by passing in -2.
+Assertions abide by the fail fast principle by exploding the program, so really you can extend the avoidance of testing purposeful failure to here as well.
 Why test for the program to crash because if it's going to crash it's going to crash.
-Maybe if you had some recovery routine it would be beneficial, but that gets into what you are recovering.
-You can basically use fail fast as a way to avoid needing to integrate test to avoid testing failure.
+Maybe if you had some recovery routine it would be beneficial.
+For the most part, it's just not worth it.
+There are certain cases where you would want to test if your unit abides by a failure returned from a dependency.
+This is different though as the unit would be expected to handle a failure.
+Again, remember that the test have to be meaningful.
 
 ### Big Toughfies of Testing
 
-As a side note is that f even needed in "toughfies"?.
-I mean "ough" in this specific word already makes an f sound so wouldn't oughf just be f anyway.
-Oh well, just like how English has its tough(f)ies, testing has its own as well.
+#### Infinite Loop
+
 //Classic infinite loop until it isn't like with user input
-    Best to seperate out the function and have it return something have the callee use a while loop
-    Is a problem because tests are supposed to be quick, and if a test hangs due to a loop it stops all other tests
-    due to most frameworks running concurrently
-//Databases
-//Testing format of output -> having to redirect streams
+    Best to seperate out to a function and have it return something
+    have the caller use a while loop
+    Is a problem because tests are supposed to be quick, and if a test hangs due to a loop it stops all other tests due to most frameworks running concurrently
+
+
+#### I dunno something else
+
+//Testing output -> having to redirect streams
 //testing system level errors
+//testing for large failures
 //testing uncommon errors
-//problems where the production code realisticly never should expose something, yet it needs to be mocked or tested
-    Like only ever needing to use a single database connection and not needing to return a db because it's never
-    needed outside its scope
 
 ### Black Box Testing
 
 Here I have a special note for black box testing.
-What I have been describing is white box testing where you can see how the code functons.
-However, if you are a pentester or auditing code you may not have the luxury to do fancy mocks and stubs.
+What I have been describing is white box testing where you can see how the code functions.
+However, if you are a pentester or auditing behavior you do not have the luxury to do fancy mocks and stubs.
+I mean you kinda could if you were to use LD_PRELOAD or DLL injections, but that's getting off-topic.
 
 ### Sources
 
@@ -1168,13 +1344,17 @@ However, if you are a pentester or auditing code you may not have the luxury to 
 
 [Deepwiki xUnit](https://deepwiki.com/xunit/xunit)
 
-[Wikipedia xUnit](https://en.wikipedia.org/wiki/XUnit)
-
-[Wikipedia Test Anything Protocol](https://en.wikipedia.org/wiki/Test_Anything_Protocol)
+[Microsoft Unit Testing Best Practices for .NET](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-best-practices)
 
 [Test Anything Protocol Home Page](https://testanything.org/)
 
 [Test Anything Protocol TAP14 specification](https://testanything.org/tap-version-14-specification.html)
+
+[Wikipedia xUnit](https://en.wikipedia.org/wiki/XUnit)
+
+[Wikipedia Test Anything Protocol](https://en.wikipedia.org/wiki/Test_Anything_Protocol)
+
+[Wikipedia Test Fixtures](https://en.wikipedia.org/wiki/Test_fixture)
 
 Meszaros, Gerard. 2007. XUnit Test Patterns : Refactoring Test Code. Boston, Mass.: Addison-Wesley.
 
