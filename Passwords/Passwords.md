@@ -35,6 +35,9 @@ This only applies to brute forcing, so more sophisticated attacks that can detec
 Making passwords like "correct battery horse staple" does have a character range 58 (26 for lowercase alpha + 33 for special charactesr including the space) with a length of 28.
 Using this in the formula `28 * log_2(58) = `
 
+Ideally you want at least 120 bits of entropy
+
+## Password Managers
 
 
 You can take the number and put it to the power of 2 (2^(bits of entropy)) and it'll give you how many guesses it would take to reach half way to an answer.
