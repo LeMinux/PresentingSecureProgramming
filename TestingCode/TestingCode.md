@@ -185,6 +185,7 @@ The Test Runner follows these steps.
 1. Discover test cases
 2. Run test cases & fixtures
 3. Report on test cases
+
 It's really how the Test Runner was implemented for that language that determines how the programmers use the style of xUnit.
 Lastly, the results of the test need to be relayed to the tester otherwise there would be no point in creating automated tests.
 xUnit standardizes how test results are given by displaying only failures.
