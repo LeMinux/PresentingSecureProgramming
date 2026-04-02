@@ -96,7 +96,6 @@ Cons:
    - Code may be written in way that favors it to be tested rather than the best or simple approach
    - Usage of interfaces for the sake of being testable
    - Testing first before design is determined
-   - Not a mindset that can be easily jumped into
 
 Widening the public API surface for the sake of testability is a bad practice!
 Now TDD does not explain how you SHOULD write tests.
@@ -889,6 +888,7 @@ There are different types of test doubles to implement which are
 - dummies
 Really it boils down to just mocks and stubs.
 A spy is a manually written mock with capturing, a dummy is a stub returning a hard-coded value, and a fake is a stub that the production code does not use for observation or control.
+If you want to know more specific detail <u>xUnit Test Patterns</u> explains all the different kinds of fakes you can do.
 From what I've seen, most testing frameworks call anything that creates a test double a mock.
 The language also plays a role as weakly typed languages have an easier time changing function, but for a language like C usage of --wrap or conditional compiling makes creating test doubles much more difficult.
 If you remember the different types of dependencies I mentioned earlier this is where mocking and stubbing come into play.
@@ -1317,27 +1317,278 @@ Again, remember that the test have to be meaningful.
 
 ### Big Toughfies of Testing
 
-#### Infinite Loop
+#### Infinite Loops
 
-//Classic infinite loop until it isn't like with user input
-    Best to seperate out to a function and have it return something
-    have the caller use a while loop
-    Is a problem because tests are supposed to be quick, and if a test hangs due to a loop it stops all other tests due to most frameworks running concurrently
+Infinite loops are another bane to testing like with databases.
+People like to say to just avoid them, but that is to be naive in not counting practically infinite loops.
+Loops such as user input or parsing a list of unknown length.
+These conditions have an exit condition, but you can't predict when that will happen.
+Unless that condition occurs, which is outside your control, you will be stuck in that loop.
+This presents a major challenge to the principle of quick testing not only because one test will hang, but it'll stop all other tests due to most frameworks running concurrently.
+Even for parallel running you'd be waiting on that test to finish, or it would stop other tests within that test group from running.
+To show how to deal with a situation like this I'll use the code sample below.
+In this sample I am taking some string input from the user and converting it to a number.
+The function returns either the converted number, INVALID, or SKIPPING based on certain conditions.
+
+```
+int someFunction(){
+    while(take_input == true){
+        printMenu();
+        puts("Enter the index you want. If you want to skip, only press enter:");
+
+        char index_input [15] = "";
+
+        long index = SKIPPING;
+        if(takingInput(index_input) == NO_INPUT) return SKIPPING;
+
+        if(normalizeNumericInput(index_input) == ERROR) return INVALID;
+
+        errno = 0;
+        char* non_digit = NULL;
+        index = strtol(index_input, &non_digit, 10);
+        if(*non_digit != '\0'){
+            ADVISE_USER("This isn't an index.");
+            index = INVALID;
+        }else{
+            if(errno == ERANGE || index > INT_MAX){
+                ADVISE_USER("Index given is too large.");
+                index = INVALID;
+            }else if(index < 0){
+                ADVISE_USER("Index can't be negative.");
+                index = INVALID;
+            }else if(index == 0){
+                ADVISE_USER("Index can't be zero. Index starts at 1.");
+                index = INVALID;
+            }else if(index > max_index){
+                ADVISE_USER("Index is larger than what is available.");
+                index = INVALID;
+            }
+        }
+
+        if(index != INVALID) take_input = false;
+    }
+
+    return index;
+}
+
+```
+
+If we wanted to test like it is now it would be very difficult.
+We can't just stub the input function hoping that our exit condition is correct.
+In this current state, we really don't have any pretty options to use since we must look at outside influence.
+Outside influences such as dependencies inside the loop or using the operating system.
+
+First lets look at mocking the external dependencies.
+Here they are takingInput() and normalizeNumericInput(), but let's just say that normalizeNumericInput() is actually a private function.
+This only leaves us with takingInput() as the only thing we can mock as we don't touch private scope.
+With mocks we can check how many times a function was called.
+If this dependency is called too many times then the mocked dependency ends the test.
+In here it can work since we have only one external dependency of takingInput().
+However, this is looking into implementation details because what if we were to add another input function.
+Now we have to mock both functions, and depending on how the mocks were set up inadvertently cause ordering of the calls to matter.
+
+Another technique to deal with this is with the usage of timers.
+If we are unable to mock anything in the loop, or we want to conduct integration testing might be the last hope.
+Each language implements timers differently, and perhaps the testing framework you are using has support for making timers.
+I think .NET has a built-in way to time out tests.
+It's convenient when it's there, but if it isn't you have no other choice than to use operating system.
+This can make the test setup much more complicated and not as maintainable.
+You also have to worry about implementation changing making the test run for longer.
+Another factor is simply the timeout itself.
+If each test has a 2-second timer and we have 10 tests that is potentially an extra 20 seconds of waiting.
+
+If all of these dirty strategies don't work, then there may be one last dirty trick up your dirty sleeve.
+You might just have to use a test hook.
+You want to avoid these as much as you can because it creates different execution, but sometimes the nature of the language gets in the way especially for lower level languages.
+They also aren't as maintainable since your test is now worrying about how the test hook itself is implemented.
+A test hook is some code you add into production that changes the execution based off a condition stating it is in production or testing.
+```
+if(TESTING){
+    //do this
+}else{
+    //proceed as normal
+}
+
+while(SHOULD_BE_INFINITE){
+    /* code */
+}
+
+#ifdef TESTING
+useThisInstead();
+#else
+useNormal();
+#endif
+
+```
+
+They can being a global variable, conditional compiler flag, or a function parameter.
+At this point you are breaking your encapsulation with the facade of "oh it's okay only the tests will use it".
+For conditional compiling it probably is true, as it'll only exist if compiling allows it, but test hooks are absolutely a last case measure.
+
+That'll all the dirty tricks you can try for infinite loops, but I saved the non-dirty and best trick for last.
+By far the most simple and most preferred method to fixing this is to refactor the code to give yourself a unit to test.
+Either taking the loop out and having the client deal with the loop, or creating a unit to be called within the loop.
+In either case you are taking the infinite loop out of the unit of work so that you can directly test the unit.
+This way you don't need to test the loop at all because you've already tested the unit in that loop.
+If your testing shows that the unit is correct, but you are still stuck in a loop when using the program normally then it's probably the condition of the loop itself that's wrong.
 
 
-#### I dunno something else
+```
+/* METHOD 1 */
 
-//Testing output -> having to redirect streams
-//testing system level errors
-//testing for large failures
-//testing uncommon errors
+void clientFunction(){
+    while(input_good != INVALID){
+        printMenu();
+        puts("Enter the index you want. If you want to skip, only press enter:");
+        input_good = someFunction(); //unit to test here
+    }
+
+    /* more code */
+}
+
+int someFunction(){
+    char index_input [15] = "";
+
+    long index = SKIPPING;
+    if(takingInput() == NO_INPUT) return SKIPPING;
+
+    if(normalizeNumericInput(index_input) == ERROR) return INVALID;
+
+    errno = 0;
+    char* non_digit = NULL;
+    index = strtol(index_input, &non_digit, 10);
+    if(*non_digit != '\0'){
+        ADVISE_USER("This isn't an index.");
+        index = INVALID;
+    }else{
+        if(errno == ERANGE || index > INT_MAX){
+            ADVISE_USER("Index given is too large.");
+            index = INVALID;
+        }else if(index < 0){
+            ADVISE_USER("Index can't be negative.");
+            index = INVALID;
+        }else if(index == 0){
+            ADVISE_USER("Index can't be zero. Index starts at 1.");
+            index = INVALID;
+        }else if(index > max_index){
+            ADVISE_USER("Index is larger than what is available.");
+            index = INVALID;
+        }
+    }
+
+    return index;
+}
+
+
+/* METHOD 2 */
+
+int someFunction(){
+    while(take_input == true){
+        printMenu();
+        puts("Enter the index you want. If you want to skip, only press enter:");
+        take_input = takeTheInputNeeded(); //unit to test here
+    }
+
+    return index;
+}
+
+```
+
+#### Legacy Code
+
+Legacy code presents quite a unique challenge to testing.
+Just hearing legacy code brings up countless shivering fears to programmers.
+A lack of documentation, usage of weird tools, impossible to refactor, nonsensical programming, and system requirements are a few things I can think of.
+There may not even be tests you can use as a basis for expected behavior.
+Before I go into my summary about dealing with legacy code I would suggest <u>Working Effectively with Legacy Code</u> by Michael Feathers.
+That books goes into far more detail than I can, and I don't have experience in this.
+The hardest part is just figuring out where to start.
+You are now peering in from the outside rather than building from the inside.
+It becomes a challenge of how can I change behavior without ruining the behavior in place.
+You will deal with a bucket load of dependencies, so there will be a whole lot of faking.
+We have covered faking already, but for legacy code you'll have to get a little more creative with how you implant fakes.
+You'll have to look into places where you can change behavior without explicitly changing the code in that place.
+This is called a seam.
+For C and C++ the preprocessor is a usable seam as you can insert your #define to change behavior for the rest of the code.
+It's like a test hook, but done by the preprocessor and then compiled.
+You could #define an int as a double the preprocessor is simply text replacement, but neat to know for those real tricky tests.
+Sticking with the steps of compilation, the linker is also a seam.
+For GCC that would be the --wrap flag to replace functions with their \_\_wrap\_ counterparts and turn the actual function into \_\_real\_ if they need to be called.
+Linux systems could modify the LD_PRELOAD parameter for dynamically linked functions.
+Other ways to force your changes would be abusing path variables.
+These variables list places to look for compiling or finding things, so if you were to place an identical looking fake earlier in the lookup it would choose that instead.
+It's a big reason why you should avoid path variables for security.
+Now the biggest problem with these types of seams is that they are not readable in the slightest.
+Unless the difference in test vs production is obvious debugging will be a large pain.
+There are many kinds of seams.
+These are just some unique examples of a seam to give you an idea of what a seam can be.
+
+When you do identify a seam it is best to avoid writing changes inline.
+Of course the definition of a seam is to not make changes in that place, but you want to use the fact it is a seam to your advantage.
+You will have to change the legacy code there isn't a way around it.
+This can involve separating out old logic into a new method or class, or creating a new method or class to be called by the old code.
+Separating the coupled code into segments that we can independently test.
+This doesn't change the old code by much, but it helps get started.
+When it comes to dependencies don't be afraid to fake it.
+OOP languages may create a parameterized constructor just so tests have a chance.
+C is a lot tougher, but there are tricks that can be done.
+Code will get complicated, but faking helps remove that complication for testing.
+Unless the faking in itself makes everything too complicated.
+There may just be too many dependencies to feasibly test.
+Which is why you should have a priority system for legacy code.
+Once again the concept of meaningful tests rears its head.
+The idea is to make small important changes preserving what you can and taking out what isn't needed.
+Breaking a system you don't understand is going to be a nightmare, so preserving function signatures, using the compiler to tell you what your tests are missing, and working on one thing at a time reduces breakage.
+What might be helpful is to create integration tests beforehand to get a baseline of previous expected behavior.
+This way you can tell if changes are breaking anything, as you are testing more code, but you'll have to deal with dependencies and it'll be harder to know where bugs are.
+Honestly, I can't go into so much detail about this topic, so I'll once again recommend <u>Working Effectively with Legacy Code</u>.
+
+#### Asynchronous Code
+
+Asynchronous code adds an extra challenge in having to wait for the act to finish.
+Sounds simple enough, but asynchronous code can involve threads, network, and processes.
+If you're lucky, the asynchronous code is handled inside the unit so that you don't have to deal with the async challenges.
+This way the unit just returns the output.
+Languages that have an explicit async/await syntax makes the testing much easier.
+At that point it's adding an await in an async block.
+```
+public async Task ServiceProcessTest(){
+       var sut = new SomeService();
+       var unusedResult= await sut.ProcessSomething("Hello world!");
+       A.CallTo(() => Repository.Save(A<string>>.Ignored)).MustHaveHappenedOnceExactly();
+}
+
+//stole this from https://stackoverflow.com/questions/66957032/asynchronous-unit-testing-async-await-vs-task-result
+```
+
+Although this looks like a unit test, it is actually an integration test.
+It's going to use the real dependencies and execute everything in between.
+It can then make it more difficult to determine if failure is from what is in between or a network issue as all you see is a single line.
+Languages that don't have async/await syntax makes it much more difficult, but you might be able to use the same API that the SUT is using.
+You may not need to test the async code as you might be able to separate out the async portion into it's own segment like you would with infinite loops.
+There are also humble objects as described in <u>xUnitTestPatterns</u>.
+I can't really explain too well how to handle asynchronous code for testing, so I would suggest reading about humble objects in <u>xUnit Test Patterns Refactoring Test Code</u> by Gerald Meszaros and Unit Testing Asynchronous Code in <u>The Art of Unit Testing</u> by Roy Osherove
 
 ### Black Box Testing
 
 Here I have a special note for black box testing.
-What I have been describing is white box testing where you can see how the code functions.
-However, if you are a pentester or auditing behavior you do not have the luxury to do fancy mocks and stubs.
-I mean you kinda could if you were to use LD_PRELOAD or DLL injections, but that's getting off-topic.
+What I have been describing is white box testing where you can see the code.
+You know what the implementation is, so you are able to call interfaces directly and mock dependencies.
+Even though a large part of unit and integration tests is to avoid implementation details, it's still inevitably tied to it because you have to know how to arrange, act, and assert.
+However, there are just things that are not feasible to test like a window in a GUI or vulnerabilities.
+If you are a pentester or user testing you do not have the luxury to do fancy fakes.
+I mean a pentester kinda could if they were to use LD_PRELOAD or DLL injections, but that's getting off-topic.
+Who ever is testing is purely looking at expected behavior and how they can change behavior.
+This of course doesn't mean they are without knowledge of how the system could be implemented or to find out how.
+If you know there is a database then you might try out a SQL injection (with permission of course).
+If someone wanted to find out what domains a website connects to they can use the network tab in the dev tools.
+You could unit test basic SQL injections, but this is testing SQL injections that you do know about.
+To be honest, you wouldn't even know to test for it if you didn't know they existed.
+Same for vulnerabilities that revolve around improper S.A.V.E processing (Simplify, Alter, Validate, Edit).
+By the way, if you want to know about the S.A.V.E process it'd look into the Taking Input chapter.
+Black box testing can help find these vulnerabilities which you can then later modify into your white box tests.
+Obviously, not every black box test is meant for catching vulnerabilities just like how there are different kind of white box tests.
+I don't have much else to add about black box testing I just wanted to let you know that it is an additional step you can take when testing.
 
 ### Sources
 
@@ -1356,6 +1607,8 @@ I mean you kinda could if you were to use LD_PRELOAD or DLL injections, but that
 [Wikipedia Test Anything Protocol](https://en.wikipedia.org/wiki/Test_Anything_Protocol)
 
 [Wikipedia Test Fixtures](https://en.wikipedia.org/wiki/Test_fixture)
+
+Feathers, Michael C. 2013. Working Effectively with Legacy Code. Upper Saddle River, N.J: Prentice Hall Ptr.
 
 Meszaros, Gerard. 2007. XUnit Test Patterns : Refactoring Test Code. Boston, Mass.: Addison-Wesley.
 
